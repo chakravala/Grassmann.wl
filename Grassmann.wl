@@ -38,8 +38,8 @@ IndexBasis[n_Integer,g_Integer]:=If[n>SparseLimit,IndexBasisCalc[n,g],
  IndexBasis[n,g]=IndexBasisCalc[n,g]]
 IndexBasisSet[n_Integer] := Flatten[Table[IndexBasis[n, i], {i, 0, n}]]
 
-BitIndex[s_Integer, i_Integer] := BitIndex[s, i] = (
- b = BitShiftLeft[1, i - 1]; BitAnd[b, s] == b)
+BitIndex[s_Integer, i_Integer] := BitIndex[s, i] = Module[
+ {b = BitShiftLeft[1, i - 1]}, BitAnd[b, s] == b]
 BitIndex[s_Integer, i_] := Map[BitIndex[s, #] &, i]
 doc2m[d_, o_, c_ : 0, q_ : 0] := doc2m[d,o,c,q] =
  BitOr[BitShiftLeft[1, d - 1], BitShiftLeft[1, 2 o - 1], 
@@ -62,7 +62,8 @@ SubManifold[M_, b_List] := SubManifold[M, Length[b], IndexToInteger[b, Dims[M]]]
 SubManifold /: Part[SubManifold[V__Integer], i_] := True
 SubManifold /: Part[SubManifold[SignatureBundle[n_, m_, s_, f___], G_, B_], i_] := BitIndex[s, Indices[B][[i]]]
 SubManifold /: Part[SubManifold[SubManifold[v_, g_, s_], G_, B_], i_] := BitIndex[s, i]
-SubManifold /: Subscript[SubManifold[V_, 0, 0], i___] := SubManifold[V, {i}]
+SubManifold /: Subscript[SubManifold[V_, G_, B_], i___] := SubManifold[V, {i}]
+SubManifold[V_, G_, B_][i___] := SubManifold[V, {i}]
 
 SuperManifold[n_Integer] := n
 SuperManifold[m_SignatureBundle] := m
@@ -95,8 +96,14 @@ sig[s_, k_] := s[[k]]
 sig[s_SignatureBundle, k_] := If[s[[k]], "-", "+"]
 NamesIndex[x_] := 1
 
-SignatureBundle /: MakeBoxes[s_SignatureBundle, StandardForm] := (dm = DiffQ[s]; 
- out = If[dm > 0, {SuperscriptBox[MakeBoxes[T], 2], 
+Labels[n_, v_ : "v"] := Map[Symbol[v <> StringJoin[Map[ToString, Indices[#]]]] &, IndexBasisSet[n]]
+Generate[V_SubManifold] := Map[SubManifold[V, CountOnes[#], #] &, IndexBasisSet[Rank[V]]]
+Generate[V_] := Generate[SubManifold[V]]
+Basis[V_] := Basis[SubManifold[V]]
+Basis[V_SubManifold] := Set @@@ Transpose[{Unevaluated /@ Labels[Rank[V]], Generate[V]}]
+
+SignatureBundle /: MakeBoxes[s_SignatureBundle, StandardForm] := Module[{dm,out,y,d,n},
+ dm = DiffQ[s]; out = If[dm > 0, {SuperscriptBox[MakeBoxes[T], 2],
     "\[LeftAngleBracket]"}, {"\[LeftAngleBracket]"}]; y = DyadQ[s]; 
  d = DiffVars[s]; n = Dims[s] - If[d > 0, If[y < 0, 2 d, d], 0]; 
  InfinityQ[s] && AppendTo[out, vio[[1]]]; 
@@ -111,10 +118,11 @@ SignatureBundle /: MakeBoxes[s_SignatureBundle, StandardForm] := (dm = DiffQ[s];
  AppendTo[out, "\[RightAngleBracket]"];
  y != 0 && AppendTo[out, If[y < 0, "*", "\[Transpose]"]];
  NamesIndex[s] > 1 && AppendTo[out, SubscriptBox[Nothing, subs[NamesIndex[s]]]];
- RowBox[out])
+ RowBox[out]]
 
 SubManifold /: MakeBoxes[s_SubManifold, StandardForm] := 
  If[BasisQ[s], SubscriptBox[MakeBoxes[v], RowBox[Riffle[Indices[s], ","]]],
+  Module[{V,P,PnV,M,dm,out,y,d,dM,ind,n,nM},
   V = SuperManifold[s]; P = If[IntegerQ[V], V, Parent[V]]; PnV = P != V;
   M = If[PnV, SuperManifold[P], V]; dm = DiffQ[s]; 
   out = If[dm > 0, {SuperscriptBox[MakeBoxes[T], 2], 
@@ -136,7 +144,7 @@ SubManifold /: MakeBoxes[s_SubManifold, StandardForm] :=
   y != 0 && AppendTo[out, If[y < 0, "*", "\[Transpose]"]];
   NamesIndex[s] > 1 && AppendTo[out, SubscriptBox[Nothing, subs[NamesIndex[s]]]];
   PnV && AppendTo[out, "\[Times]" <> ToString[Length[V]]];
-  RowBox[out]]
+  RowBox[out]]]
 
 PolyQCalc[M_Integer] := BitAnd[M, 16] == 0
 DyadQCalc[M_Integer] := If[MemberQ[Range[8, 11], Mod[M, 16]], -1, 
@@ -160,8 +168,8 @@ DiffQ[_SignatureBundle] := 0
 DiffVars[_SignatureBundle] := 0
 OptionsQ[_SignatureBundle] := 0
 Map[(#[SubManifold[V_, G_, B_]] := #[V]) &, {OptionsQ, Metric, PolyQ, DyadQ, DiffQ}]
-DiffVars[SubManifold[M_, N_, S_]] := (n = Dims[M]; c = DiffQ[M];
-  Total[Map[Boole[MemberQ[Range[1+n-If[c<0,2,1]*DiffVars[M],n],#]] &,Indices[S]]])
+DiffVars[SubManifold[M_, N_, S_]] := Module[{n = Dims[M], c = DiffQ[M]},
+  Total[Map[Boole[MemberQ[Range[1+n-If[c<0,2,1]*DiffVars[M],n],#]] &,Indices[S]]]]
 (*SubManifold/:Basis[Times[V_SubManifold,a__]]:=V*)
 
 DyadicQ[t_] := DyadQ[Manifold[t]] < 0
@@ -169,7 +177,7 @@ DualQ[t_] := DyadQ[Manifold[t]] > 0
 TangentQ[t_] := DiffVars[Manifold[t]] != 0
 
 Metric[_Integer] := 0
-Metric[V_, b_Integer] := Times@@Map[Boole,SignatureBundle[3][[Indices[b]]]]
+Metric[V_, b_Integer] := Times@@Map[Boole,V[[Indices[b]]]]
 
 InfinityQ[_Integer] := False
 InfinityQ[_SignatureBundle] := InfinityQCalc[0]
@@ -203,30 +211,29 @@ Origin2InfinityQ[V_, A_Integer, B_Integer] := Origin2Q[V, A, B] && InfinityQ[V, 
 Twiddle[d_Integer] := BitXor[d, BitShiftLeft[1, 64] - 1]
 
 DiffMask[_Integer] := 0
-DiffMask[V_] := (d = DiffVars[V]; typemax = BitShiftLeft[1, 64] - 1;
-  If[DyadicQ[V], (
-    v = BitShiftLeft[BitShiftLeft[1, d] - 1, Dims[V] - 2 d];
-    w = BitShiftLeft[BitShiftLeft[1, d] - 1, Dims[V] - d];
-    If[d < 0, {typemax - v, typemax - w}, {v, w}]),
-   v = BitShiftLeft[BitShiftLeft[1, d] - 1, Dims[V] - d];
-   If[d < 0, typemax - v, v]])
-SymmetricSplit[V_, a_] := (
-  sm = SymmetricMask[V, a]; dm = DiffMask[V]; 
-  If[DyadicQ[V], {BitAnd[sm, dm[1]], BitAnd[sm, dm[2]]}, sm])
-SymmetricMask[V_, a_] := (d = DiffMask[V];
-  BitAnd[a, If[DyadicQ[V], BitOr[d[[1]], d[[2]]], d]])
-SymmetricMask[V_, a_, b_] := (d = DiffMask[V];
-  D = If[DyadicQ[V], BitOr[d[[1]], d[[2]]], d];
-  aD = BitAnd[a, D]; bD = BitAnd[b, D];
-  {BitAnd[a, Twiddle[D]], BitAnd[b, Twiddle[D]], BitOr[aD, bD], 
-   BitAnd[aD, bD]})
-DiffCheck[V_, A_Integer, B_Integer] := (
-  d = DiffVars[V]; db = DiffMask[V];
+DiffMask[V_] := Module[{d = DiffVars[V], typemax = BitShiftLeft[1, 64] - 1},
+  If[DyadicQ[V], Module[{
+    v = BitShiftLeft[BitShiftLeft[1, d] - 1, Dims[V] - 2 d],
+    w = BitShiftLeft[BitShiftLeft[1, d] - 1, Dims[V] - d]},
+    If[d < 0, {typemax - v, typemax - w}, {v, w}]],
+   Module[{v = BitShiftLeft[BitShiftLeft[1, d] - 1, Dims[V] - d]},
+   If[d < 0, typemax - v, v]]]]
+SymmetricSplit[V_, a_] := Module[{sm = SymmetricMask[V, a], dm = DiffMask[V]},
+  If[DyadicQ[V], {BitAnd[sm, dm[1]], BitAnd[sm, dm[2]]}, sm]]
+SymmetricMask[V_, a_] := Module[{d = DiffMask[V]},
+  BitAnd[a, If[DyadicQ[V], BitOr[d[[1]], d[[2]]], d]]]
+SymmetricMask[V_, a_, b_] := Module[{d = DiffMask[V],dD,aD,bD},
+  dD = If[DyadicQ[V], BitOr[d[[1]], d[[2]]], d];
+  aD = BitAnd[a, dD]; bD = BitAnd[b, dD];
+  {BitAnd[a, Twiddle[dD]], BitAnd[b, Twiddle[D]], BitOr[aD, bD], 
+   BitAnd[aD, bD]}]
+DiffCheck[V_, A_Integer, B_Integer] := Module[{
+  d = DiffVars[V], db = DiffMask[V], v, hi, ho},
   v = If[DyadicQ[V], BitOr[db[1], db[2]], db];
   hi = Infinity2Q[V, A, B] && ! OriginQ[V, A, B];
   ho = Origin2Q[V, A, B] && ! InfinityQ[V, A, B];
   (hi || ho) || (d != 0 && 
-     CountOnes[BitAnd[A, v]] + CountOnes[BitAnd[B, v]] > DiffMode[V]))
+     CountOnes[BitAnd[A, v]] + CountOnes[BitAnd[B, v]] > DiffMode[V])]
 
 flipsig[N_, S_Integer] := BitAnd[2^N - 1, Twiddle[S]]
 
@@ -235,14 +242,14 @@ Dual[V_, B_, M_ : Rank[V]/2] :=
  BitOr[BitAnd[BitShiftLeft[B, M], BitShiftLeft[1, Rank[V]] - 1], 
   BitShiftLeft[B, M]]
 
-SignatureBundle /: Transpose[V_SignatureBundle] := (
- c = DyadQ[V]; c < 0 && Throw[domain];
+SignatureBundle /: Transpose[V_SignatureBundle] := Module[{c = DyadQ[V]},
+ c < 0 && Throw[domain];
  (*"$V is the direct sum of a vector space and its dual space"*)
  SignatureBundle[Rank[V], 
   doc2m[Boole[InfinityQ[V]], Boole[OriginQ[V]], If[c > 0, 0, 1]], 
-  flipsig[Rank[V], Signature[V]], DiffVars[V], DiffQ[V]])
-SubManifold /: Transpose[SubManifold[M_, N_, S_]] := (
+  flipsig[Rank[V], Signature[V]], DiffVars[V], DiffQ[V]]]
+SubManifold /: Transpose[SubManifold[M_, N_, S_]] := Module[{},
  DyadQ[M] < 0 && Throw[domain];
  (*"$V is the direct sum of a vector space and its dual space"*)
- SubManifold[If[IntegerQ[M], Transpose[SignatureBundle[M]], Transpose[M]], N, S])
+ SubManifold[If[IntegerQ[M], Transpose[SignatureBundle[M]], Transpose[M]], N, S]]
 
