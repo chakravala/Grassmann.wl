@@ -2,22 +2,26 @@
 (* This file is part of Grassmann. It is licensed under the AGPL license *)
 (* Grassmann Copyright (C) 2021 Michael Reed *)
 
+(* Submanifold -> Submanifold *)
+(* guide page: explain symbols, products
+standard form, *)
+
 GrassmannQ[_] := False
 GrassmannQ[_SignatureBundle] := True
-GrassmannQ[_SubManifold] := True
+GrassmannQ[_Submanifold] := True
 GrassmannQ[_MultiVector] := True
 ManifoldQ[_] := False
 ManifoldQ[_SignatureBundle] := True
-ManifoldQ[_SubManifold] := True
+ManifoldQ[_Submanifold] := True
 GradedQ[_] := False
-GradedQ[_SubManifold] := True
-SubManifoldQ[_] := False
-SubManifoldQ[_SubManifold] := True
+GradedQ[_Submanifold] := True
+SubmanifoldQ[_] := False
+SubmanifoldQ[_Submanifold] := True
 MultiVectorQ[_] := False
 MultiVectorQ[_MultiVector] := True
-BasisQ[_SubManifold] := False
+BasisQ[_Submanifold] := False
 BasisQ[_SignatureBundle] := False
-BasisQ[SubManifold[M_SubManifold, G_, B_]] := True
+BasisQ[Submanifold[M_Submanifold, G_, B_]] := True
 
 IndexLimit=20;SparseLimit=22;
 CountOnes[d_Integer]:=CountOnes[d]=DigitCount[d,2,1]
@@ -46,103 +50,107 @@ doc2m[d_, o_, c_ : 0, q_ : 0] := doc2m[d,o,c,q] =
   If[c < 0, 8, BitShiftLeft[1, 3 c - 1]], BitShiftLeft[1, 5 q - 1]]
 
 Manifold[V_SignatureBundle] := V
-Manifold[V_SubManifold] := V
-Manifold[SubManifold[M_SubManifold, G_, B_]] := M
-Manifold[SubManifold[M_Integer, G_, B_]] := M
+Manifold[V_Submanifold] := V
+Manifold[Submanifold[M_Submanifold, _, _]] := M
+Manifold[Submanifold[M_Integer, _, _]] := M
 
-SignatureBundle /: Part[SignatureBundle[n___], i_] := BitIndex[0, i]
-SignatureBundle /: Part[SignatureBundle[n_, m_, s_, f___], i_] := BitIndex[s, i]
+SignatureBundle /: Part[SignatureBundle[___], i_] := BitIndex[0, i]
+SignatureBundle /: Part[SignatureBundle[_, _, s_, ___], i_] := BitIndex[s, i]
 (*SignatureBundle[n_,o_:0,s_:0,v_:0]:=SignatureBundle[n,o,s,v,0]*)
 
-SubManifold[V_,G_] := SubManifold[V, G, BitShiftLeft[1, G] - 1]
-SubManifold[V_SubManifold] := SubManifold[V, Grade[V]]
-SubManifold[V_SignatureBundle] := SubManifold[V, Rank[V]]
-SubManifold[V_Integer] := SubManifold[V,V]
-SubManifold[M_, b_List] := SubManifold[M, Length[b], IndexToInteger[b, Dims[M]]]
-SubManifold /: Part[SubManifold[V__Integer], i_] := True
-SubManifold /: Part[SubManifold[SignatureBundle[n_, m_, s_, f___], G_, B_], i_] := BitIndex[s, Indices[B][[i]]]
-SubManifold /: Part[SubManifold[SubManifold[v_, g_, s_], G_, B_], i_] := BitIndex[s, i]
-SubManifold /: Subscript[SubManifold[V_, G_, B_], i___] := SubManifold[V, {i}]
-SubManifold[V_, G_, B_][i___] := SubManifold[V, {i}]
+Submanifold[V_,G_] := Submanifold[V, G, BitShiftLeft[1, G] - 1]
+Submanifold[V_Submanifold] := Submanifold[V, Rank[V]]
+Submanifold[V_SignatureBundle] := Submanifold[V, Rank[V]]
+Submanifold[V_Integer] := Submanifold[V,V]
+Submanifold[M_, b_List] := Submanifold[M, Length[b], IndexToInteger[b, Dims[M]]]
+Submanifold /: Part[Submanifold[V__Integer], i_] := True
+Submanifold /: Part[Submanifold[SignatureBundle[_, _, s_, ___], _, B_], i_] := BitIndex[s, Indices[B][[i]]]
+Submanifold /: Part[Submanifold[Submanifold[_, _, s_], _, _], i_] := BitIndex[s, i]
+Submanifold /: Subscript[Submanifold[V_, _, _], i___] := Submanifold[V, {i}]
+Submanifold[V_, _, _][i___] := Submanifold[V, {i}]
 
-SuperManifold[n_Integer] := n
-SuperManifold[m_SignatureBundle] := m
-SuperManifold[SubManifold[M_, G_, B_]] := M
+Supermanifold[n_Integer] := n
+Supermanifold[m_SignatureBundle] := m
+Supermanifold[Submanifold[M_, _, _]] := M
 Parent[V_] := Manifold[V]
 
 SignatureBundle /: Det[s_SignatureBundle] := If[OddQ[CountOnes[Metric[s]]], -1, 1]
 SignatureBundle /: Abs[s_SignatureBundle] := Sqrt[Abs[Det[s]]]
-SubManifold /: Abs[s_SubManifold] := If[BasisQ[s], Sqrt[Reverse[s] s], Sqrt[Abs[Det[s]]]]
+Submanifold /: Abs[s_Submanifold] := If[BasisQ[s], Sqrt[Reverse[s] s], Sqrt[Abs[Det[s]]]]
 
-Indices[SubManifold[V_, G_, B_]] := Indices[B]
+Indices[Submanifold[_, _, B_]] := Indices[B]
 
+Bits[Submanifold[_,_,B_]] := B
 Rank[n_Integer] := n
-Rank[SignatureBundle[n_, m___]] := n
-Rank[SubManifold[V_, G_, B_]] := G
+Rank[SignatureBundle[n_, ___]] := n
+Rank[Submanifold[_, G_, _]] := G
 Grade[V_SignatureBundle] := Rank[V] - If[DyadicQ[V], 2, 2]*DiffVars[V]
-Grade[V_SubManifold] := Rank[V] - If[DyadicQ[V], 2, 1]*DiffVars[V]
+Grade[V_Submanifold] := Rank[V] - If[DyadicQ[V], 2, 1]*DiffVars[V]
 Dims[M_] := Dims[Manifold[M]]
 Dims[M_Integer] := M
 Dims[V_SignatureBundle] := Rank[V]
-Dims[SubManifold[M_, G_, B_]] := G
-Dims[SubManifold[M_SubManifold, G_, B_]] := Dims[M]
+Dims[Submanifold[_, G_, _]] := G
+Dims[Submanifold[M_Submanifold, _, _]] := Dims[M]
 
 vio = {"\[Infinity]", "\[EmptySet]"}
 printsep[_, _SignatureBundle, _, _] := Nothing
 printsep[_, _Integer, _, _] := Nothing
-printsep[out_, s_, k_, n_] := k != n && AppendTo[out, ","]
+printsep[out_, _, k_, n_] := k != n && AppendTo[out, ","]
 sig[_Integer, _] := "x"(*"\[Times]"*)
 sig[s_, k_] := s[[k]]
 sig[s_SignatureBundle, k_] := If[s[[k]], "-", "+"]
 NamesIndex[x_] := 1
 
 Labels[n_, v_ : "v"] := Map[Symbol[v <> StringJoin[Map[ToString, Indices[#]]]] &, IndexBasisSet[n]]
-Generate[V_SubManifold] := Map[SubManifold[V, CountOnes[#], #] &, IndexBasisSet[Rank[V]]]
-Generate[V_] := Generate[SubManifold[V]]
-Basis[V_] := Basis[SubManifold[V]]
-Basis[V_SubManifold] := Set @@@ Transpose[{Unevaluated /@ Labels[Rank[V]], Generate[V]}]
+Generate[V_Submanifold] := Map[Submanifold[V, CountOnes[#], #] &, IndexBasisSet[Rank[V]]]
+Generate[V_] := Generate[Submanifold[V]]
+Basis[V_] := Basis[Submanifold[V]]
+Basis[V_Submanifold] := Set @@@ Transpose[{Unevaluated /@ Labels[Rank[V]], Generate[V]}]
+
+SymbolQ[_Symbol] := True
+SymbolQ[_] := False
 
 SignatureBundle /: MakeBoxes[s_SignatureBundle, StandardForm] := Module[{dm,out,y,d,n},
- dm = DiffQ[s]; out = If[dm > 0, {SuperscriptBox[MakeBoxes[T], 2],
+ dm = DiffQ[s]; out = If[dm > 0, {SuperscriptBox[MakeBoxes[T], If[SymbolQ[dm],MakeBoxes[dm],dm]],
     "\[LeftAngleBracket]"}, {"\[LeftAngleBracket]"}]; y = DyadQ[s]; 
  d = DiffVars[s]; n = Dims[s] - If[d > 0, If[y < 0, 2 d, d], 0]; 
  InfinityQ[s] && AppendTo[out, vio[[1]]]; 
  OriginQ[s] && AppendTo[out, vio[[2]]];
- d < 0 && AppendTo[out, SubscriptBox[Nothing, Range[Abs[d], 1, -1]]];
+ d < 0 && AppendTo[out, SubscriptBox["", Sequence @@ Range[Abs[d], 1, -1]]];
  out = Join[out, Map[If[#, "-", "+"] &, 
     s[[Range[Boole[InfinityQ[s]] + Boole[OriginQ[s]] + 1 + If[d < 0, Abs[d], 0], n]]]]];
  d > 0 && AppendTo[out, If[BitXor[Boole[y > 0], Boole[!PolyQ[s]]]>0, 
-    SuperscriptBox[Nothing, Range[1, Abs[d]]], 
-    SubscriptBox[Nothing, Range[1, Abs[d]]]]];
- d > 0 && y < 0 && AppendTo[out, SuperscriptBox[Nothing, Range[1, Abs[d]]]];
+    SuperscriptBox["", Range[1, Abs[d]]],
+    SubscriptBox["", Sequence @@ Range[1, Abs[d]]]]];
+ d > 0 && y < 0 && AppendTo[out, SuperscriptBox["", Range[1, Abs[d]]]];
  AppendTo[out, "\[RightAngleBracket]"];
  y != 0 && AppendTo[out, If[y < 0, "*", "\[Transpose]"]];
- NamesIndex[s] > 1 && AppendTo[out, SubscriptBox[Nothing, subs[NamesIndex[s]]]];
+ NamesIndex[s] > 1 && AppendTo[out, SubscriptBox["", subs[NamesIndex[s]]]];
  RowBox[out]]
 
-SubManifold /: MakeBoxes[s_SubManifold, StandardForm] := 
- If[BasisQ[s], SubscriptBox[MakeBoxes[v], RowBox[Riffle[Indices[s], ","]]],
+Submanifold /: MakeBoxes[s_Submanifold, StandardForm] :=
+ If[BasisQ[s], PrintIndices[Supermanifold[s],Bits[s]],
   Module[{V,P,PnV,M,dm,out,y,d,dM,ind,n,nM},
-  V = SuperManifold[s]; P = If[IntegerQ[V], V, Parent[V]]; PnV = P != V;
-  M = If[PnV, SuperManifold[P], V]; dm = DiffQ[s]; 
-  out = If[dm > 0, {SuperscriptBox[MakeBoxes[T], 2], 
+  V = Supermanifold[s]; P = If[IntegerQ[V], V, Parent[V]]; PnV = P != V;
+  M = If[PnV, Supermanifold[P], V]; dm = DiffQ[s];
+  out = If[dm > 0, {SuperscriptBox[MakeBoxes[T], If[SymbolQ[dm],MakeBoxes[dm],dm]],
      "\[LeftAngleBracket]"}, {"\[LeftAngleBracket]"}];
   PnV && PrependTo[out, SuperscriptBox["\[CapitalLambda]", Rank[V]]];
   y = DyadQ[s]; d = DiffVars[s]; dM = DiffVars[M]; ind = Indices[s];
-  n = Grade[s] - If[d > 0, If[y < 0, 2 d, d], 0];
-  NM = Dims[M] - If[dM > 0, If[y < 0, 2 dM, dM], 0];
+  n = Rank[s] - If[d > 0, If[y < 0, 2*d, d], 0];
+  NM = Dims[M] - If[dM > 0, If[y < 0, 2*dM, dM], 0];
   InfinityQ[s] && AppendTo[out, vio[[1]]]; 
   OriginQ[s] && AppendTo[out, vio[[2]]];
   Do[AppendTo[out, If[MemberQ[ind, k], sig[M, k], "_"]]; printsep[out, M, k, Grade[s]];,
    {k, Boole[InfinityQ[s]] + Boole[OriginQ[s]] + 1 + If[d < 0, Abs[d], 0], NM}];
-  d > 0 && AppendTo[out, If[BitXor[(y > 0), ! PolyQ[s]], 
-   SuperscriptBox[Nothing, ind[[Range[n + 1, n + Abs[d]]]] - NM], 
-   SubscriptBox[Nothing, ind[[Range[n + 1, n + Abs[d]]]] - NM]]];
+  d > 0 && AppendTo[out, If[BitXor[Boole[y > 0], !PolyQ[s]],
+   SuperscriptBox["", RowBox[Riffle[ind[[Range[n+1, n+Abs[d]]]] - NM, ","]]],
+   SubscriptBox["", RowBox[Riffle[ind[[Range[n+1, n+Abs[d]]]] - NM, ","]]]]];
   d > 0 && y < 0 && AppendTo[out, 
-   SuperscriptBox[Nothing, ind[[Range[n + Abs[d] + 1, Length[ind]]]] - NM]];
+   SuperscriptBox["", RowBox[Riffle[ind[[Range[n+Abs[d]+1,Length[ind]]]]-NM,","]]]];
   AppendTo[out, "\[RightAngleBracket]"];
   y != 0 && AppendTo[out, If[y < 0, "*", "\[Transpose]"]];
-  NamesIndex[s] > 1 && AppendTo[out, SubscriptBox[Nothing, subs[NamesIndex[s]]]];
+  NamesIndex[s] > 1 && AppendTo[out, SubscriptBox["", subs[NamesIndex[s]]]];
   PnV && AppendTo[out, "\[Times]" <> ToString[Length[V]]];
   RowBox[out]]]
 
@@ -155,22 +163,22 @@ OriginQCalc[M_Integer] := MemberQ[{2, 3, 6, 7, 10, 11}, Mod[M, 16]]
 PolyQ[_Integer] := True
 Map[(#[_Integer] := 0) &, {OptionsQ, DyadQ, DiffQ, DiffVars}]
 Map[(#[t_] := #[Manifold[t]]) &, {OptionsQ, PolyQ, DyadQ, DiffQ, DiffVars}]
-PolyQ[SignatureBundle[N_, M_, S___]] := PolyQCalc[M]
-DyadQ[SignatureBundle[N_, M_, S___]] := DyadQCalc[M]
-DiffQ[SignatureBundle[N_, M_, S_, F_, D_]] := D
-DiffVars[SignatureBundle[N_, M_, S_, F_, D___]] := F
-SignatureBundle /: Signature[SignatureBundle[N_, M_, S_, F___]] := S
+PolyQ[SignatureBundle[_, M_, ___]] := PolyQCalc[M]
+DyadQ[SignatureBundle[_, M_, ___]] := DyadQCalc[M]
+DiffQ[SignatureBundle[_, _, _, _, D_]] := D
+DiffVars[SignatureBundle[_, _, _, F_, ___]] := F
+SignatureBundle /: Signature[SignatureBundle[_, _, S_, ___]] := S
 SignatureBundle /: Signature[_SignatureBundle] := 0
-OptionsQ[SignatureBundle[N_, M_, S___]] := M
+OptionsQ[SignatureBundle[_, M_, ___]] := M
 PolyQ[_SignatureBundle] := PolyQCalc[0]
 DyadQ[_SignatureBundle] := DyadQCalc[0]
 DiffQ[_SignatureBundle] := 0
 DiffVars[_SignatureBundle] := 0
 OptionsQ[_SignatureBundle] := 0
-Map[(#[SubManifold[V_, G_, B_]] := #[V]) &, {OptionsQ, Metric, PolyQ, DyadQ, DiffQ}]
-DiffVars[SubManifold[M_, N_, S_]] := Module[{n = Dims[M], c = DiffQ[M]},
+Map[(#[Submanifold[V_, _, _]] := #[V]) &, {OptionsQ, Metric, PolyQ, DyadQ, DiffQ}]
+DiffVars[Submanifold[M_, _, S_]] := Module[{n = Dims[M], c = DiffQ[M]},
   Total[Map[Boole[MemberQ[Range[1+n-If[c<0,2,1]*DiffVars[M],n],#]] &,Indices[S]]]]
-(*SubManifold/:Basis[Times[V_SubManifold,a__]]:=V*)
+(*Submanifold/:Basis[Times[V_Submanifold,a__]]:=V*)
 
 DyadicQ[t_] := DyadQ[Manifold[t]] < 0
 DualQ[t_] := DyadQ[Manifold[t]] > 0
@@ -181,19 +189,19 @@ Metric[V_, b_Integer] := Times@@Map[Boole,V[[Indices[b]]]]
 
 InfinityQ[_Integer] := False
 InfinityQ[_SignatureBundle] := InfinityQCalc[0]
-InfinityQ[SignatureBundle[N_, M_, S___]] := InfinityQCalc[M]
-InfinityQ[SubManifold[M_, N_, S_]] := InfinityQ[M] && OddQ[S]
-(*InfinityQ[Times[a_SubManifold,b__]]:=InfinityQ[a]*)
+InfinityQ[SignatureBundle[_, M_, ___]] := InfinityQCalc[M]
+InfinityQ[Submanifold[M_, _, S_]] := InfinityQ[M] && OddQ[S]
+(*InfinityQ[Times[a_Submanifold,__]]:=InfinityQ[a]*)
 
 OriginQ[_Integer] := False
 OriginQ[_SignatureBundle] := OriginQCalc[0]
-OriginQ[SignatureBundle[N_, M_, S___]] := OriginQCalc[M]
-OriginQ[SubManifold[M_, N_, S_]] := 
+OriginQ[SignatureBundle[_, M_, ___]] := OriginQCalc[M]
+OriginQ[Submanifold[M_, _, S_]] :=
  OriginQ[M] && If[InfinityQ[M], BitAnd[2, S] == 2, OddQ[S]]
-(*OriginQ[Times[a_SubManifold,b__]]:=OriginQ[a]*)
+(*OriginQ[Times[a_Submanifold,__]]:=OriginQ[a]*)
 
-(*isinf[e_SubManifold]:=InfinityQ[e]&&Grade[e]==1
-isorigin[SubManifold[V_,G_,B_]]:=OriginQ[V]&&G==1&&e[InfiniftyQ[V]+1]*)
+(*isinf[e_Submanifold]:=InfinityQ[e]&&Grade[e]==1
+isorigin[Submanifold[V_,G_,_]]:=OriginQ[V]&&G==1&&e[InfiniftyQ[V]+1]*)
 
 ConformalQ[V_] := InfinityQ[V] && OriginQ[V]
 OriginQ[V_, B_Integer] := If[InfinityQ[V], BitAnd[2, B] == 2, OddQ[B]]
@@ -235,6 +243,16 @@ DiffCheck[V_, A_Integer, B_Integer] := Module[{
   (hi || ho) || (d != 0 && 
      CountOnes[BitAnd[A, v]] + CountOnes[BitAnd[B, v]] > DiffMode[V])]
 
+Tangent[s_SignatureBundle,d_:1] := Module[{f=DiffVars[s]},Tangent[s,d,If[f!=0,f,1]]]
+Tangent[s:SignatureBundle[n:Repeated[_,{1,3}]],d_] := Tangent[s,d,1]
+Tangent[s:SignatureBundle[_,_,_,0,___],d_] := Tangent[s,d,1]
+Tangent[s_SignatureBundle,d_,f_] := SignatureBundle[Rank[s]+If[DyadicQ[s], 2*f, f],OptionsQ[s],Signature[s],f,DiffQ[s]+d]
+T = Tangent
+Tangent /: Power[Tangent,mu_] := Tangent[mu]
+Tangent /: Times[Tangent[mu_],V_] := Tangent[V,mu]
+
+Subtangent[V_] := Subscript[V,Range[Grade[V]+1,Dims[V]]]
+
 flipsig[N_, S_Integer] := BitAnd[2^N - 1, Twiddle[S]]
 
 Dual[V_] := If[DyadicQ[V], V, V^T]
@@ -248,8 +266,98 @@ SignatureBundle /: Transpose[V_SignatureBundle] := Module[{c = DyadQ[V]},
  SignatureBundle[Rank[V], 
   doc2m[Boole[InfinityQ[V]], Boole[OriginQ[V]], If[c > 0, 0, 1]], 
   flipsig[Rank[V], Signature[V]], DiffVars[V], DiffQ[V]]]
-SubManifold /: Transpose[SubManifold[M_, N_, S_]] := Module[{},
+Submanifold /: Transpose[Submanifold[M_, N_, S_]] := Module[{},
  DyadQ[M] < 0 && Throw[domain];
  (*"$V is the direct sum of a vector space and its dual space"*)
- SubManifold[If[IntegerQ[M], Transpose[SignatureBundle[M]], Transpose[M]], N, S]]
+ Submanifold[If[IntegerQ[M], Transpose[SignatureBundle[M]], Transpose[M]], N, S]]
 
+pre = {"v","w","\[PartialD]","\[Epsilon]"}
+char[-1] := vio[[1]]
+char[0] := vio[[2]]
+char[i_Integer] := i
+EmptyQ[set_] := Length[set] == 0
+
+IndexText[v_, i_] := v <> StringJoin[ToString /@ i]
+SubText[v_, i_, True] := IndexText[v, i]
+SubText[v_, i_, False] := SubscriptBox[v, i]
+SubText[v_, i_List, False] := SubscriptBox[v, RowBox[Riffle[i, ","]]]
+SuperText[v_, i_, True] := IndexText[v, i]
+SuperText[v_, i_, False] := SuperscriptBox[v, RowBox[Riffle[i, ","]]]
+
+ShiftIndices[V_, b_Integer] := ShiftIndices[Supermanifold[V], b]
+ShiftIndices[s_, set:List[___]] := Module[{M = Supermanifold[s]},
+    EmptyQ[set] && Module[{k = 1, n = Length[set]},
+        InfinityQ[M] && set[[1]] == 1 && (set[[1]] = -1; k += 1);
+        shift = InfinityQ[M] + OriginQ[M]
+        OriginQ[M] && n>=k && set[[k]]==shift && (set[[k]]=0;k+=1)
+        shift > 0 && (set[[k;;n]] -= shift)];set]
+
+ShiftIndices[V_Integer,b_Integer] := Indices[b]
+ShiftIndices[s_Integer,set_List[___Integer]] := set
+
+ShiftIndices[V_SignatureBundle,b_Integer] := ShiftIndices[V,Indices[b]]
+ShiftIndices[V:SubManifold[_,_,S_],b_Integer] := ShiftIndices[V,Indices[S][Indices[b]]]
+
+PrintIndices[V_,e_Integer,label:(_?BooleanQ):False] := PrintLabel[V,e,label,Sequence @@ pre]
+
+PrintIndex[i_] := char[If[i>36, i-26, i]]
+PrintIndices[b_Integer] := PrintIndices[Indices[b]]
+PrintIndices[b_List] := Map[PrintIndex, b]
+PrintIndices[a_,b_,l:(_?BooleanQ):False,e:(_String):pre[[1]],f:(_String):pre[[2]]] := PrintIndices[a,b,{},{},l,e,f]
+PrintIndices[a_,b_,c_,d_,l:(_?BooleanQ):False,e:(_String):pre[[1]],f:(_String):pre[[2]],g:(_String):pre[[3]],h:(_String):pre[[4]]] := Module[
+    {aa = EmptyQ[a], bb = !EmptyQ[b], cc = !EmptyQ[c], dd = !EmptyQ[d],
+    PRE = {e,f,g,h}, out},
+	out = {};
+    cc && AppendTo[out,SubText[g,PrintIndices[c],l]];
+    dd && AppendTo[out,SuperText[h,PrintIndices[d],l]];
+    !((bb || cc || dd) && aa) && AppendTo[out,SubText[e,PrintIndices[a],l]];
+    bb && AppendTo[out,SuperText[f,PrintIndices[b],l]];
+    If[l,StringJoin,RowBox][out]]
+
+PrintIndices[V_Integer,e_Integer,label:(_?BooleanQ):False] := PrintLabel[V,e,label]
+PrintLabel[V_Integer,e_Integer,label_?BooleanQ,___] := SubText[pre[[1]],PrintIndices[ShiftIndices[V,e]],label]
+
+PrintLabel[V_,e_Integer,label_?BooleanQ,vec_,cov_,duo_,dif_] := Module[
+    {M = Supermanifold[V], nn,d,c,db},
+    nn = Dims[M]; d = DiffVars[M]; c = DyadQ[V]; db = DiffMask[V];
+    If[c < 0, Module[
+        {es = BitAnd[e, Twiddle[BitOr[db[[1]],db[[2]]]]], n = (nn-2*d)/2, eps, par},
+        eps = ShiftIndices[V,BitAnd[e, db[[1]]]]-(nn-2*d-Boole[InfinityQ[M]]-Boole[OriginQ[M]]);
+        par = ShiftIndices[V,BitAnd[e, db[[2]]]]-(nn-d-Boole[InfinityQ[M]]-Boole[OriginQ[M]]);
+        PrintIndices[ShiftIndices[V,BitAnd[es, 2^n-1]],ShiftIndices[V,BitShiftLeft[es,n]],eps,par,label,vec,cov,duo,dif]],
+      Module[{es = BitAnd[e, Twiddle[db]], eps},
+        eps = ShiftIndices[V,BitAnd[e, db]]-(nn-d-Boole[InfinityQ[M]]-Boole[OriginQ[M]]);
+        If[!EmptyQ[eps],
+            PrintIndices[ShiftIndices[V,es],{},If[c>0,{},eps],If[c>0,eps,{}],label,If[c>0,cov,vec],cov,If[c>0,dif,duo],dif],
+            SubText[If[c>0,cov,vec],PrintIndices[ShiftIndices[V,es]],label]]]]]
+
+IndexString[V_,d_] := PrintLabel[V,d,True,Sequence @@ pre]
+IndexSymbol[V_,d_] := Symbol[IndexString[V,d]]
+IndexSplit[B_] := Map[BitShiftLeft[1,#-1] &, Indices[B]]
+
+OneQ[1] := True
+OneQ[-1] := False
+OneQ[0] := False
+OneQ[x_] := x == 1
+OneQ[True] := True
+OneQ[False] := False
+
+IndexParity[ind_List] := Module[{k = 1, t = false},
+    While[k < Length[ind],
+        If[ind[[k]] > ind[[k+1]],
+            ind[[{k,k+1}]] = ind[[{k+1,k}]];
+            t = !t; k ≠ 1 && (k -= 1),
+            k += 1]];
+    {t, ind}]
+IndexParity[ind_List,s] := Module[{k = 1, t = false},
+    While[k < Length[ind],
+        If[ind[[k]] == ind[[k+1]],
+            (ind[[k]] == 1 && InfinityQ[s] && Return[{t, ind, true}]);
+            OneQ[s[[ind[[k]]]]] && (t = !t);
+            Delete[ind,{k,k+1}],
+        If[ind[[k]] > ind[[k+1]],
+            ind[[k,k+1]] = ind[[k+1,k]];
+            t = !t;
+            k != 1 && (k -= 1),
+            k += 1]]];
+    {t, ind, false}]
