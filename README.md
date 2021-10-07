@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./logo.png" alt="Grassmann.wl"/>
+</p>
+
 # Grassmann.wl
 
 *⟨Leibniz-Grassmann-Clifford-Hestenes⟩ differential geometric algebra / multivector simplicial complex*

@@ -49,12 +49,25 @@ OneQ[x_] := x == 1
 OneQ[True] := True
 OneQ[False] := False
 
-Get["utilities.wl"]
 Get["indices.wl"]
 Get["directsum.wl"]
-Get["generic.wl"]
-Get["operations.wl"]
-Get["basis.wl"]
+
+(* basis *)
+
+Labels[manifold_, prefix_String] := Labels[IndexBasis[Rank[manifold]],prefix]
+Labels[manifold_, grade_, prefix_String:"v"] := Labels[IndexBasis[Rank[manifold],grade],prefix]
+Labels[indices_List,prefix_String] := Map[Symbol[prefix <> StringJoin[Map[ToString, Indices[#]]]] &, indices]
+GeometricAlgebraBasis[m_Submanifold] := GeometricAlgebraBasis[m,IndexBasis[Rank[m]]]
+GeometricAlgebraBasis[m_Submanifold,grade_] := GeometricAlgebraBasis[m,IndexBasis[Rank[m],grade]]
+GeometricAlgebraBasis[m_Submanifold,bits_List] := Map[Submanifold[m, CountOnes[#], #] &, bits]
+GeometricAlgebraBasis[manifold_] := GeometricAlgebraBasis[Submanifold[manifold]]
+AllocateBasis[manifold_] := AllocateBasis[Submanifold[manifold]]
+AllocateBasis[m_Submanifold] := Set @@@ Transpose[{Unevaluated /@ Labels[m], GeometricAlgebraBasis[m]}]
+
+GetBasis[V_, B_Integer] := Submanifold[V, CountOnes[B], B]
+
+GZero[V_] := 0 GOne[V]
+GOne[V_] := Submanifold[V, 0]
 
 (* Chain *)
 
@@ -79,10 +92,7 @@ Multivector /: MakeBoxes[Multivector[m_Submanifold,a_SparseArray],StandardForm] 
   RowBox[Riffle[Map[RowBox[{t[[#]], PrintIndices[m, #-1]}] &,
     System`Convert`NotebookMLDump`UnorderedIntersection[IndexBasis[m]+1,Flatten[t["ColumnIndices"]]]], "+"]]]
 
-
-Get["parity.wl"]
 Get["algebra.wl"]
-Get["products.wl"]
 
 (* algebra *)
 

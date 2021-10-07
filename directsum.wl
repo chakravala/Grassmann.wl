@@ -100,3 +100,48 @@ Submanifold /: MakeBoxes[s_Submanifold, StandardForm] :=
 V0 = MetricSignature[0]
 \[DoubleStruckCapitalR] = MetricSignature[1]
 
+Get["generic.wl"]
+
+(* set theory ∪,∩,⊆,⊇ *)
+
+Map[(# /: Union[x:#] := x) &, ManifoldHeads]
+Map[(# /: Union[a:#,b_?ManifoldQ,c__?ManifoldQ] := Union[Union[a,b],c]) &, ManifoldHeads]
+
+Map[(# /: Intersection[x:#] := x) &, ManifoldHeads]
+Map[(# /: Intersection[a:#,b_?ManifoldQ,c__?ManifoldQ] := Intersection[Intersection[a,b],c]) &, ManifoldHeads]
+
+OptionsList[m_] := {InfinityQ[m], OriginQ[m], DyadQ[m], PolyQ[m]}
+CombineOptions[a_,b_] := ModuleScope[
+  {ds,list} = {(Rank[a]==Rank[b])&&(Signature[a]==Signature[b]),
+    Map[If[IntegerQ[#],#,Boole[#]]&,Join[Drop[OptionsList[a],-1], Drop[OptionsList[b],-1]]]};
+  If[list == {0,0,0,0,0,0},doc2m[0,0,0],
+    If[list == {0,0,1,0,0,1},doc2m[0,0,1],
+      If[list == {0,0,0,0,0,1},doc2m[0,0,If[ds,-1,0]],
+        If[list == {0,0,1,0,0,0},doc2m[0,0,If[ds,-1,0]],
+          Throw[domain]]]]]]
+
+CirclePlus[a_MetricSignature, b_MetricSignature] := Module[{n,nm,x,y,list,option},
+  {n,nm,x,y,list} = {Rank[a], nm = Rank[a]==Rank[b], x = Signature[a], y = Signature[b],
+  list = Map[If[IntegerQ[#],#,Boole[#]]&,Join[Drop[OptionsList[a],-1], Drop[OptionsList[b],-1]]]};
+  option = If[list == {0,0,0,0,0,0},doc2m[0,0,0],
+    If[list == {0,0,1,0,0,1},doc2m[0,0,1],
+      If[list == {0,0,0,0,0,1},doc2m[0,0,If[nm,If[y!=FlipBits[n,x],0,-1],0]],
+        If[list == {0,0,1,0,0,0},doc2m[0,0,If[nm,If[x!=FlipBits[n,y],0,-1],0]],
+          Throw[domain]]]]];
+  MetricSignature[n+Rank[b],option,BitOr[x,BitShiftLeft[y,n]],Max[DiffVars[a],DiffVars[b]],Max[DiffMode[a],DiffMode[b]]]]
+
+CirclePlus[Submanifold[v_,n_,x_,___],Submanifold[w_,m_,y_,___]] := Module[{b=IntegerQ[w],
+    z = If[(DualQ[v]==DualQ[w])||(v!=w^T), Combine[v,w,x,y],BitOr[Mixed[v,x],Mixed[w,u]]]},
+    Submanifold[If[IntegerQ[v], If[b, v+w, CirclePlus[MetricSignature[v],w]], If[b, CirclePlus[v,MetricSignature[W]], CirclePlus[v,w]]],CountOnes[Z],Z]]
+
+Map[(MetricSignature /: Power[m:MetricSignature[_,#,___],i_Integer] := If[i==0,Return[V0],Nest[CirclePlus[m,#] &, m, i-1]]) &, Range[0,4]]
+MetricSignature /: Power[MetricSignature[n_],i_Integer] := MetricSignature[n*i]
+
+(* conversions *)
+
+Manifold[m_Submanifold] := m
+Manifold[Submanifold[m_Integer, __]] := m
+Manifold[Submanifold[m_Submanifold, __]] := m
+(*MetricSignature[m:Submanifold[_,n_,_]] = MetricSignature[N,OptionsQ[m]](Vector(signbit.(V[:])),DiffVars[m],DiffMode[m])*)
+
+

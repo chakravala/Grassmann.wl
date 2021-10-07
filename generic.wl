@@ -176,10 +176,22 @@ Submanifold /: Transpose[Submanifold[m_, grade_, bits_, coef_]] := Module[{},
 GradeBasis[v,Submanifold[V_,_,B_,___]] := GradeBasis[V,B]
 Grade[v,Submanifold[V_,_,B_,___]] := Grade[V,B]
 
-Map[Module[{p = Symbol[StringJoin["Parity",ToString[#]]]},
-  Submanifold /: #[b:Submanifold[V_,G_,B_,_]] := If[Coefficient[b]!=0,If[p[Grade[V,B]],Submanifold[-Coefficient[b],b],b],GZero[Manifold[b]]]] &
-,{Reverse,Conjugate}]
+(* operations *)
 
-Map[Module[{p = Symbol[StringJoin["Parity",ToString[#]]]},
-  #[b:Submanifold[V_,G_,B_]] := If[Coefficient[b]!=0,If[p[Grade[V,B]],Submanifold[-Coefficient[b],b],b],GZero[Manifold[b]]]] &
-,{Involute,Clifford}]
+Mixed[m_, ibk_Integer] := ModuleScope[{n,d,mc} = {Dims[m], DiffVars[m], DualQ[m]};
+    If[d != 0,Module[{
+        {a,b} = {BitAnd[ibk,BitShifLeft[1,n-d]-1],BitAnd[ibk,DiffMask[m]]}},
+        If[mc,BitOr[BitShiftLeft[a,n-d],BitShiftLeft[b,n]],BitOr[a,BitShiftLeft[b,n-d]]]],
+        If[vc, BitShiftLeft[ibk, n, ibk]]]]
+
+Combine[v_,w_,a_Integer,b_Integer] := If[DualQ[v]!=DualQ[w],
+    Throw[error](*"$v and $w incompatible"*),
+    {V,W} = {Supermanifold[v],Supermanifold[w]};
+    If[TangentSpaceQ[V]||TangentSpaceQ[W],
+        {gV,gW} = {If[IntegerQ[V],V,Grade[V]],If[IntegerQ[W],W,Grade[W]]};
+        {gras1,gras2} = {BitAnd[a,BitShiftLeft[1,gV]-1],BitAnd[b,BitShiftLeft[1,gW]-1]};
+        diffs = BitOr[BitAnd[a,DiffMask[W]],BitAnd[b,DiffMask[W]]];
+        BitOr[gras1,BitShiftLeft[gras2,gV],BitShiftLeft[diffs,Dims[W]]] (* BitOr[A,BitShiftLeft[B,N-D]] *)
+    ,
+        BitOr[iak,BitShiftLeft[ibk,Dims[V]]]]] (* ibk *)
+
