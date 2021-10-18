@@ -8,6 +8,7 @@ Manifold[manifold_MetricSignature] := manifold
 Manifold[manifold_Submanifold] := manifold
 Manifold[Submanifold[manifold_Submanifold, __]] := manifold
 Manifold[Submanifold[manifold_Integer, __]] := manifold
+Manifold[Submanifold[manifold_Symbol, __]] := manifold
 
 MetricSignatureQ[_] := False
 MetricSignatureQ[_MetricSignature] := True
@@ -21,6 +22,8 @@ MetricSignature[n_,m_,s_,f_,d_,v_String] := MetricSignature[n,m,s,f,d,{v,pre[[2]
 
 Submanifold[signature_String] := Submanifold[MetricSignature[signature]]
 Submanifold[manifold_] := Submanifold[manifold, Rank[manifold]]
+Submanifold[manifold_Symbol] := Submanifold[manifold, manifold]
+Submanifold[manifold_,grade_Symbol] := Submanifold[manifold, grade, PseudoList[n]]
 Submanifold[manifold_,grade_Integer] := Submanifold[manifold, grade, BitShiftLeft[1, grade] - 1]
 Submanifold[manifold_, indices_List, c_:1] := If[Length[Union[indices]]!=Length[indices],
   GZero[manifold],
@@ -100,8 +103,6 @@ Submanifold /: MakeBoxes[s_Submanifold, StandardForm] :=
 V0 = MetricSignature[0]
 \[DoubleStruckCapitalR] = MetricSignature[1]
 
-Get["generic.wl"]
-
 (* set theory ∪,∩,⊆,⊇ *)
 
 Map[(# /: Union[x:#] := x) &, ManifoldHeads]
@@ -136,6 +137,7 @@ CirclePlus[Submanifold[v_,n_,x_,___],Submanifold[w_,m_,y_,___]] := Module[{b=Int
 
 Map[(MetricSignature /: Power[m:MetricSignature[_,#,___],i_Integer] := If[i==0,Return[V0],Nest[CirclePlus[m,#] &, m, i-1]]) &, Range[0,4]]
 MetricSignature /: Power[MetricSignature[n_],i_Integer] := MetricSignature[n*i]
+MetricSignature /: Power[MetricSignature[n_],i_Symbol] := MetricSignature[n*i]
 
 (* conversions *)
 

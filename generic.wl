@@ -16,12 +16,14 @@ Submanifold /: Abs[m_Submanifold] := If[BasisQ[m], Sqrt[Reverse[m] m], Sqrt[Abs[
 
 Bits[Submanifold[_, _, bits_, ___]] := bits
 Rank[m_Integer] := m
+Rank[m_Symbol] := m
 Rank[m_List] := Length[m]
 Rank[MetricSignature[dim_, ___]] := Rank[dim]
 Rank[Submanifold[_, grade_, __]] := grade
 Grade[m_?ManifoldQ] := Rank[m] - If[DyadicQ[m], 2, 1]*DiffVars[m]
 Dims[m_] := Dims[Manifold[m]]
 Dims[m_Integer] := m
+Dims[m_Symbol] := m
 Dims[m_List] := Length[m]
 Dims[m_MetricSignature] := Rank[m]
 Dims[Submanifold[_, grade_, __]] := grade

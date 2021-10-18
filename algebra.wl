@@ -2,6 +2,74 @@
 (* This file is part of Grassmann. It is licensed under the AGPL license *)
 (* Grassmann Copyright (C) 2021 Michael Reed *)
 
+Map[Module[{sm=Symbol[StringJoin[#,"Multi"]],sb=Symbol[StringJoin[#,"Blade"]]},
+  sm[x_,Submanifold[v_,_,a_,___],Submanifold[v_,_,b_,___]] := sm[v,a,b,x]] &,
+{"Join","Geom","Meet","Skew"}]
+
+JoinMulti[v_,a_Integer,b_Integer,x_] := Module[{A,B,Q,Z,val},
+  If[x!=0 && !DiffCheck[v,a,b],
+    {A,B,Q,Z} = SymmetricMask[v,a,b];
+    val = Times[ParityInner[v,a,b],x];
+    If[DiffVars[v]!=0,If[Z!=0,val*=GetBasis[LowOrder[v],Z],Nothing];
+      If[CountOnes[Q]+Order[val]>DiffMode[v],Return[Nothing],Nothing],Nothing];
+    Rule[BitOr[BitXor[A,B],Q]+1,val],Nothing]]
+
+GeomMulti[v_,a_Integer,b_Integer,x_] := Module[{A,B,Q,Z,pcc,bas,cc,val},
+  If[x!=0 && !DiffCheck[v,a,b],
+    {A,B,Q,Z} = SymmetricMask[v,a,b];
+    {pcc,bas,cc} = If[InfinityQ[v]&&OriginQ[v],Conformal[v,A,B],{False,BitXor[A,B],False}];
+    val = Times[ParityInner[v,a,b],If[pcc,-x,x]];
+    If[TangentSpaceQ[v],If[Z!=0,val*=GetBasis[LowOrder[v],Z],Nothing];
+      If[CountOnes[Q]+Order[val]>DiffMode[v],Return[Nothing],Nothing],Nothing];
+    If[cc,Sequence[Rule[BitOr[bas,Q],val],Rule[BitOr[BitXor[ConformalMask[v],bas],Q]+1,If[InfinityOriginQ[v,A,B],-val,val]]],Rule[BitOr[bas,Q]+1,val]],Nothing]]
+
+MeetMulti[v_,a_Integer,b_Integer,x_] := Module[{g,c,t,z,val,aa,bb,Q,cc},
+  If[x!=0,
+    {g,c,t,z} = Regressive[v,a,b];
+    val = x;
+    If[TangentSpaceQ[v],If[Z!=0,Module[{aa,bb,Q,cc},
+      {aa,bb,Q,cc} = SymmetricMask[v,a,b];
+      val*=GetBasis[LowOrder[v],Z];
+      If[CountOnes[Q]+Order[val]>DiffMode[v],Return[Nothing],Nothing]],Nothing],Nothing];
+    If[t,Rule[c+1,Times[g,val]],Nothing],Nothing]]
+
+SkewMulti[v_,a_Integer,b_Integer,x_] := Module[{g,c,t,z,val,aa,bb,Q,cc},
+  If[x!=0,
+    {g,c,t,z} = Interior[v,a,b];
+    val = x;
+    If[TangentSpaceQ[v],If[Z!=0,Module[{aa,bb,Q,cc},
+      {aa,bb,Q,cc} = SymmetricMask[v,a,b];
+      val*=GetBasis[LowOrder[v],Z];
+      If[CountOnes[Q]+Order[val]>DiffMode[v],Return[Nothing],Nothing]],Nothing],Nothing];
+    If[t,Rule[c+1,Times[g,val]],Nothing],Nothing]]
+
+ExterBits[v_,a_,b_] := If[DiffVars[v]!=0,Module[{x,y,c,d},{x,y,c,d}=SymmetricMask[v,a,b];CountOnes[BitAnd[x,y]]==0],CountOnes[BitAnd[a,b]]==0]
+ExterMulti[v_,a_,b_,x_] := If[ExterBits[v,a,b],JoinMulti[v,a,b,x],Nothing]
+
+ExterMulti[v_,a_,b_,x_,y_] := ExterMulti[v,a,b,derivemul[v,a,b,x,y]]
+GeomMulti[v_,a_,b_,x_,y_] := GeomMulti[v,a,b,derivemul[v,a,b,x,y]]
+MeetMulti[v_,a_,b_,x_,y_] := MeetMulti[v,a,b,derivemul[v,a,b,x,y]]
+SkewMulti[v_,a_,b_,x_,y_] := SkewMulti[v,a,b,derivemul[v,a,b,x,y]]
+
+ExterMulti[v_,Rule[List[a_],x_],Rule[List[b_],y_]] := ExterMulti[v,a-1,b-1,x,y]
+GeomMulti[v_,Rule[List[a_],x_],Rule[List[b_],y_]] := GeomMulti[v,a-1,b-1,x,y]
+MeetMulti[v_,Rule[List[a_],x_],Rule[List[b_],y_]] := MeetMulti[v,a-1,b-1,x,y]
+SkewMulti[v_,Rule[List[a_],x_],Rule[List[b_],y_]] := SkewMulti[v,a-1,b-1,x,y]
+
+product[name_,a:Multivector[V_,A_],b:Multivector[V_,B_]] :=
+  Multivector[v,SparseArray[Map[name[v,#[[1]],#[[2]]] &,
+    Distribute[{Drop[ArrayRules[A], -1],Drop[ArrayRules[B], -1]}, List]], Length[A]]]
+product[name_,a:Submanifold[V_,_,A_,x_],b:Multivector[V_,B_]] :=
+  Multivector[v,SparseArray[Map[name[v,{A+1}->x,#] &, Drop[ArrayRules[B],-1]], Length[B]]]
+product[name_,a:Multivector[V_,A_],b:Submanifold[V_,_,B_,y_]] :=
+  Multivector[v,SparseArray[Map[name[v,#,{B+1}->y] &, Drop[ArrayRules[A],-1]], Length[A]]]
+
+Map[Module[{prod=#[[1]],name=#[[2]]},
+  Multivector /: prod[a_Multivector,b_Multivector] := product[name,a,b];
+  Multivector /: prod[a_Submanifold,b_Multivector] := product[name,a,b];
+  Multivector /: prod[a_Multivector,b_Submanifold] := product[name,a,b]] &,
+{{Wedge,ExterMulti},{NonCommutativeMultiply,GeomMulti},{Times,GeomMulti},{Vee,MeetMulti},{Dot,SkewMulti}}]
+
 mul[a:Submanifold[V_,_,ba_,___],b:Submanifold[V_,_,bb_,___]] := mul[a,b,derivemul[V,ba,bb,1,True]]
 mul[a:Submanifold[V_,_,ba_,___],b:Submanifold[V_,_,bb_,___],der_] := If[DiffCheck[V,ba,bb] || der==0,Return[GZero[V]],Module[{A,B,Q,Z,pcc,bas,cc,d,out},
     {A,B,Q,Z} = SymmetricMask[V,ba,bb];
