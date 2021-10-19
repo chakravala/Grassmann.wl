@@ -45,6 +45,7 @@ SymbolQ[_] := False
 OneQ[1] := True
 OneQ[-1] := False
 OneQ[0] := False
+OneQ[_Symbol] := False
 OneQ[x_] := x == 1
 OneQ[True] := True
 OneQ[False] := False
@@ -94,37 +95,5 @@ Multivector /: MakeBoxes[Multivector[m_Submanifold,a_SparseArray],StandardForm] 
     System`Convert`NotebookMLDump`UnorderedIntersection[IndexBasis[m]+1,Flatten[t["ColumnIndices"]]]], "+"]]]
 
 Get["algebra.wl"]
-
-(* algebra *)
-
-Submanifold /: Minus[m_Submanifold] := Times[m,-1]
-Submanifold /: Minus[a:Submanifold[m_, __],b:Submanifold[m_, __]] := Plus[a,Minus[b]]
-
-Submanifold[m_, g_, b_] := Submanifold[m, g, b, 1]
-
-Plus[a:Submanifold[m_, g_, b_, _], b:Submanifold[m_, g_, b_, _]]
-
-(*Submanifold /: Plus[t:Submanifold[m_, g_, b_, 1]..] := Times[{t}[[1]],Length[{t}]]*)
-Submanifold /: Plus[t:Submanifold[m_, g_, b_, _]..] := Times[{t}[[1]],Total[Map[Coefficient,{t}]]]
-Submanifold /: Plus[t:Submanifold[m_, g_ ,_, _]..] := Module[{n=Dims[m]},Chain[m,g,SparseArray[Normal@Merge[Map[Rule[#,n] &, {t}],Total],Binomial[n,g]]]]
-Submanifold /: Plus[t:Submanifold[m_, _, _, _]..] := Multivector[m,SparseArray[Normal@Merge[Map[Rule, {t}],Total],BitShiftLeft[1,Dims[m]],Total]]
-
-(*UpValues[Submanifold] = Join[UpValues[Submanifold],{
-	HoldPattern[Plus[t:Submanifold[m_, g_, b_, _]..] :> Times[{t}[[1]],Total[Map[Coefficient,{t}]]]],
-	HoldPattern[Plus[t:Submanifold[m_, g_ ,_, _]..] :> Module[{n=Dims[m]},Chain[m,g,SparseArray[Normal@Merge[Map[Rule[#,n] &, {t}],Total],Binomial[n,g]]]]],
-	HoldPattern[Plus[t:Submanifold[m_, _, _, _]..] :> Multivector[m,SparseArray[Normal@Merge[Map[Rule, {t}],Total],BitShiftLeft[1,Dims[m]],Total]]]}];
-UpValues[Submanifold] = SubsetMap[Reverse, UpValues[Submanifold], -3 ;; -1];*)
-
-Chain /: Plus[t:Chain[m_,g_,_]..] := Chain[m,g,Total[Map[SparseArray,{t}]]]
-Multivector /: Plus[t:Multivector[m_,_]..] := Multivector[m,Total[Map[SparseArray,{t}]]]
-
-Chain /: Minus[Chain[m_, g_, a_]] := Chain[m, g, -a]
-Chain /: Minus[Chain[m_, g_, x_], Chain[m_, g_, y_]] := Chain[m, g, x - y]
-Multivector /: Minus[Multivector[m_, a_]] := Multivector[m, -a]
-Multivector /: Minus[Multivector[m_, x_], Multivector[m_, y_]] := Multivector[m, x - y]
-
-
-
-Submanifold[x_,s:Submanifold[v_,g_,b_,y_]] := Submanifold[v,g,b,Times[x,y]]
 
 

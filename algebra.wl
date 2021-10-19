@@ -46,25 +46,17 @@ SkewMulti[v_,a_Integer,b_Integer,x_] := Module[{g,c,t,z,val,aa,bb,Q,cc},
 ExterBits[v_,a_,b_] := If[DiffVars[v]!=0,Module[{x,y,c,d},{x,y,c,d}=SymmetricMask[v,a,b];CountOnes[BitAnd[x,y]]==0],CountOnes[BitAnd[a,b]]==0]
 ExterMulti[v_,a_,b_,x_] := If[ExterBits[v,a,b],JoinMulti[v,a,b,x],Nothing]
 
-ExterMulti[v_,a_,b_,x_,y_] := ExterMulti[v,a,b,derivemul[v,a,b,x,y]]
-GeomMulti[v_,a_,b_,x_,y_] := GeomMulti[v,a,b,derivemul[v,a,b,x,y]]
-MeetMulti[v_,a_,b_,x_,y_] := MeetMulti[v,a,b,derivemul[v,a,b,x,y]]
-SkewMulti[v_,a_,b_,x_,y_] := SkewMulti[v,a,b,derivemul[v,a,b,x,y]]
-
-ExterMulti[v_,Rule[List[a_],x_],Rule[List[b_],y_]] := ExterMulti[v,a-1,b-1,x,y]
-GeomMulti[v_,Rule[List[a_],x_],Rule[List[b_],y_]] := GeomMulti[v,a-1,b-1,x,y]
-MeetMulti[v_,Rule[List[a_],x_],Rule[List[b_],y_]] := MeetMulti[v,a-1,b-1,x,y]
-SkewMulti[v_,Rule[List[a_],x_],Rule[List[b_],y_]] := SkewMulti[v,a-1,b-1,x,y]
-
-product[name_,a:Multivector[V_,A_],b:Multivector[V_,B_]] :=
+product[name_,a:Multivector[v_,A_],b:Multivector[v_,B_]] :=
   Multivector[v,SparseArray[Map[name[v,#[[1]],#[[2]]] &,
     Distribute[{Drop[ArrayRules[A], -1],Drop[ArrayRules[B], -1]}, List]], Length[A]]]
-product[name_,a:Submanifold[V_,_,A_,x_],b:Multivector[V_,B_]] :=
+product[name_,a:Submanifold[v_,_,A_,x_],b:Multivector[v_,B_]] :=
   Multivector[v,SparseArray[Map[name[v,{A+1}->x,#] &, Drop[ArrayRules[B],-1]], Length[B]]]
-product[name_,a:Multivector[V_,A_],b:Submanifold[V_,_,B_,y_]] :=
+product[name_,a:Multivector[v_,A_],b:Submanifold[v_,_,B_,y_]] :=
   Multivector[v,SparseArray[Map[name[v,#,{B+1}->y] &, Drop[ArrayRules[A],-1]], Length[A]]]
 
 Map[Module[{prod=#[[1]],name=#[[2]]},
+  name[v_,a_,b_,x_,y_] := name[v,a,b,derivemul[v,a,b,x,y]];
+  name[v_,Rule[List[a_],x_],Rule[List[b_],y_]] := name[v,a-1,b-1,x,y];
   Multivector /: prod[a_Multivector,b_Multivector] := product[name,a,b];
   Multivector /: prod[a_Submanifold,b_Multivector] := product[name,a,b];
   Multivector /: prod[a_Multivector,b_Submanifold] := product[name,a,b]] &,
@@ -193,4 +185,36 @@ Map[Module[{p = Symbol[StringJoin["Parity",ToString[#]]]},
       {ib,val} = {a["AdjacencyLists"],a["NonzeroValues"]};
       Multivector[v,SparseArray[Map[Rule[ib[[#]],If[p[Grade[v,ib[[#]]-1]],-val[[#]],val[[#]]]] &,Range[Length[ib]]],Length[a]]]]] &,
 {Involute,Clifford}]
+
+(* algebra *)
+
+Submanifold /: Minus[m_Submanifold] := Times[m,-1]
+Submanifold /: Minus[a:Submanifold[m_, __],b:Submanifold[m_, __]] := Plus[a,Minus[b]]
+
+Submanifold[m_, g_, b_] := Submanifold[m, g, b, 1]
+
+Plus[a:Submanifold[m_, g_, b_, _], b:Submanifold[m_, g_, b_, _]]
+
+(*Submanifold /: Plus[t:Submanifold[m_, g_, b_, 1]..] := Times[{t}[[1]],Length[{t}]]*)
+Submanifold /: Plus[t:Submanifold[m_, g_, b_, _]..] := Times[{t}[[1]],Total[Map[Coefficient,{t}]]]
+Submanifold /: Plus[t:Submanifold[m_, g_ ,_, _]..] := Module[{n=Dims[m]},Chain[m,g,SparseArray[Normal@Merge[Map[Rule[#,n] &, {t}],Total],Binomial[n,g]]]]
+Submanifold /: Plus[t:Submanifold[m_, _, _, _]..] := Multivector[m,SparseArray[Normal@Merge[Map[Rule, {t}],Total],BitShiftLeft[1,Dims[m]],Total]]
+
+(*UpValues[Submanifold] = Join[UpValues[Submanifold],{
+	HoldPattern[Plus[t:Submanifold[m_, g_, b_, _]..] :> Times[{t}[[1]],Total[Map[Coefficient,{t}]]]],
+	HoldPattern[Plus[t:Submanifold[m_, g_ ,_, _]..] :> Module[{n=Dims[m]},Chain[m,g,SparseArray[Normal@Merge[Map[Rule[#,n] &, {t}],Total],Binomial[n,g]]]]],
+	HoldPattern[Plus[t:Submanifold[m_, _, _, _]..] :> Multivector[m,SparseArray[Normal@Merge[Map[Rule, {t}],Total],BitShiftLeft[1,Dims[m]],Total]]]}];
+UpValues[Submanifold] = SubsetMap[Reverse, UpValues[Submanifold], -3 ;; -1];*)
+
+Chain /: Plus[t:Chain[m_,g_,_]..] := Chain[m,g,Total[Map[SparseArray,{t}]]]
+Multivector /: Plus[t:Multivector[m_,_]..] := Multivector[m,Total[Map[SparseArray,{t}]]]
+
+Chain /: Minus[Chain[m_, g_, a_]] := Chain[m, g, -a]
+Chain /: Minus[Chain[m_, g_, x_], Chain[m_, g_, y_]] := Chain[m, g, x - y]
+Multivector /: Minus[Multivector[m_, a_]] := Multivector[m, -a]
+Multivector /: Minus[Multivector[m_, x_], Multivector[m_, y_]] := Multivector[m, x - y]
+
+
+
+Submanifold[x_,s:Submanifold[v_,g_,b_,y_]] := Submanifold[v,g,b,Times[x,y]]
 
