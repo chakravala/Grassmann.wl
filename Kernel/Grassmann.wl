@@ -50,9 +50,9 @@ OneQ[x_] := x == 1
 OneQ[True] := True
 OneQ[False] := False
 
-Get["indices.wl"]
-Get["directsum.wl"]
-Get["generic.wl"]
+Get["Grassmann`indices`"]
+Get["Grassmann`directsum`"]
+Get["Grassmann`generic`"]
 
 (* basis *)
 
@@ -94,6 +94,6 @@ Multivector /: MakeBoxes[Multivector[m_Submanifold,a_SparseArray],StandardForm] 
   RowBox[Riffle[Map[RowBox[{t[[#]], PrintIndices[m, #-1]}] &,
     System`Convert`NotebookMLDump`UnorderedIntersection[IndexBasis[m]+1,Flatten[t["ColumnIndices"]]]], "+"]]]
 
-Get["algebra.wl"]
+Get["Grassmann`algebra`"]
 
 
