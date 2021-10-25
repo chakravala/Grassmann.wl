@@ -16,6 +16,8 @@ Github workflow, pull requests
 SetUsage
 *)
 
+BeginPackage["Grassmann`"]
+
 << GeneralUtilities`
 
 ManifoldHeads = {MetricSignature,Submanifold}
@@ -97,3 +99,4 @@ Multivector /: MakeBoxes[Multivector[m_Submanifold,a_SparseArray],StandardForm] 
 Get["Grassmann`algebra`"]
 
 
+EndPackage[]
