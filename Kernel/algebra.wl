@@ -7,7 +7,7 @@ Map[Module[{sm=Symbol[StringJoin[#,"Multi"]],sb=Symbol[StringJoin[#,"Blade"]]},
 {"Join","Geom","Meet","Skew"}]
 
 JoinMulti[v_,a_Integer,b_Integer,x_] := Module[{A,B,Q,Z,val},
-  If[x!=0 && !DiffCheck[v,a,b],
+  If[!ZeroQ[x] && !DiffCheck[v,a,b],
     {A,B,Q,Z} = SymmetricMask[v,a,b];
     val = Times[ParityInner[v,a,b],x];
     If[DiffVars[v]!=0,If[Z!=0,val*=GetBasis[LowOrder[v],Z],Nothing];
@@ -15,7 +15,7 @@ JoinMulti[v_,a_Integer,b_Integer,x_] := Module[{A,B,Q,Z,val},
     Rule[BitOr[BitXor[A,B],Q]+1,val],Nothing]]
 
 GeomMulti[v_,a_Integer,b_Integer,x_] := Module[{A,B,Q,Z,pcc,bas,cc,val},
-  If[x!=0 && !DiffCheck[v,a,b],
+  If[!ZeroQ[x] && !DiffCheck[v,a,b],
     {A,B,Q,Z} = SymmetricMask[v,a,b];
     {pcc,bas,cc} = If[InfinityQ[v]&&OriginQ[v],Conformal[v,A,B],{False,BitXor[A,B],False}];
     val = Times[ParityInner[v,a,b],If[pcc,-x,x]];
@@ -24,7 +24,7 @@ GeomMulti[v_,a_Integer,b_Integer,x_] := Module[{A,B,Q,Z,pcc,bas,cc,val},
     If[cc,Sequence[Rule[BitOr[bas,Q],val],Rule[BitOr[BitXor[ConformalMask[v],bas],Q]+1,If[InfinityOriginQ[v,A,B],-val,val]]],Rule[BitOr[bas,Q]+1,val]],Nothing]]
 
 MeetMulti[v_,a_Integer,b_Integer,x_] := Module[{g,c,t,z,val,aa,bb,Q,cc},
-  If[x!=0,
+  If[!ZeroQ[x],
     {g,c,t,z} = Regressive[v,a,b];
     val = x;
     If[TangentSpaceQ[v],If[Z!=0,Module[{aa,bb,Q,cc},
@@ -34,7 +34,7 @@ MeetMulti[v_,a_Integer,b_Integer,x_] := Module[{g,c,t,z,val,aa,bb,Q,cc},
     If[t,Rule[c+1,Times[g,val]],Nothing],Nothing]]
 
 SkewMulti[v_,a_Integer,b_Integer,x_] := Module[{g,c,t,z,val,aa,bb,Q,cc},
-  If[x!=0,
+  If[!ZeroQ[x],
     {g,c,t,z} = Interior[v,a,b];
     val = x;
     If[TangentSpaceQ[v],If[Z!=0,Module[{aa,bb,Q,cc},
@@ -61,9 +61,10 @@ Map[Module[{prod=#[[1]],name=#[[2]]},
   Multivector /: prod[a_Submanifold,b_Multivector] := product[name,a,b];
   Multivector /: prod[a_Multivector,b_Submanifold] := product[name,a,b]] &,
 {{Wedge,ExterMulti},{NonCommutativeMultiply,GeomMulti},{Times,GeomMulti},{Vee,MeetMulti},{Dot,SkewMulti}}]
+(*{{Wedge,ExterChain},{NonCommutativeMultiply,GeomChain},{Times,GeomChain},{Vee,MeetChain},{Dot,SkewChain}}*)
 
 mul[a:Submanifold[V_,_,ba_,___],b:Submanifold[V_,_,bb_,___]] := mul[a,b,derivemul[V,ba,bb,1,True]]
-mul[a:Submanifold[V_,_,ba_,___],b:Submanifold[V_,_,bb_,___],der_] := If[DiffCheck[V,ba,bb] || der==0,Return[GZero[V]],Module[{A,B,Q,Z,pcc,bas,cc,d,out},
+mul[a:Submanifold[V_,_,ba_,___],b:Submanifold[V_,_,bb_,___],der_] := If[DiffCheck[V,ba,bb] || ZeroQ[der],Return[GZero[V]],Module[{A,B,Q,Z,pcc,bas,cc,d,out},
     {A,B,Q,Z} = SymmetricMask[V,ba,bb];
     {pcc,bas,cc} = If[InfQ[V] && OriginQ[V], Conformal[V,A,B], {False,BitXor[A,B],False}];
     d = GetBasis[V,BitOr[bas,Q]];
@@ -135,6 +136,10 @@ derivemul[V_,a_,b_,x_,y_] := If[!(TangentSpaceQ[V] && DyadicQ[V]),x*y,Module[{sa
 
 (* unary *)
 
+Multivector /: Transpose[Multivector[v_,a_SparseArray]] := If[DyadicQ[v],Module[{ib,val},
+  {ib,val} = {a["AdjacencyLists"],a["NonzeroValues"]};
+  Multivector[v,SparseArray[Map[Rule[Dual[v,ib[[#]]-1,Dims[v]/2]+1,Conjugate[val[[#]]]]] &,Range[Length[ib]],Length[a]]]],Multivector[Dual[v],Map[Conj,a]]]
+
 Map[Module[{s = Symbol[StringJoin["Complement",#]], p = Symbol[StringJoin["Parity",#]], h, pg, pn},
   {h,pg,pn} = {Symbol[StringJoin[ToString[s],"Hodge"]],Symbol[StringJoin[ToString[p],"Hodge"]],Symbol[StringJoin[ToString[p],"Null"]]};
   Map[Module[{c = #[[1]], p = #[[2]]},
@@ -155,7 +160,7 @@ Map[Module[{c,p,h,ph,pn},
       {ib,val} = {a["AdjacencyLists"],a["NonzeroValues"]};
       {d,q} = {DiffVars[v],If[ch,0,Boole[InfinityQ[v]]+Boole[OriginQ[v]]]};
       Chain[v,Dims[v]-g,SparseArray[Map[Rule[BitComplement[Dims[v],ib[[#]]-1,d,q]+1,Conjugate[p[v,ib[[#]]-1]*If[ch,pn[v,ib[[#]]-1,val[[#]]],val[[#]]]]] &,Range[Length[ib]]],Length[a]]]]*)
-    c[Multivector[v_,a_SparseArray]] := Module[{ib,val},
+    c[Multivector[v_,a_SparseArray]] := Module[{ib,val,d,q},
       {ib,val} = {a["AdjacencyLists"],a["NonzeroValues"]};
       {d,q} = {DiffVars[v],If[ch,0,Boole[InfinityQ[v]]+Boole[OriginQ[v]]]};
       Multivector[v,SparseArray[Map[Rule[BitComplement[Dims[v],ib[[#]]-1,d,q]+1,Conjugate[p[v,ib[[#]]-1]*If[ch,pn[v,ib[[#]]-1,val[[#]]],val[[#]]]]] &,Range[Length[ib]]],Length[a]]]]] &

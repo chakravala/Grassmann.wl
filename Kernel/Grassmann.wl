@@ -47,10 +47,24 @@ SymbolQ[_] := False
 OneQ[1] := True
 OneQ[-1] := False
 OneQ[0] := False
-OneQ[_Symbol] := False
-OneQ[x_] := x == 1
+OneQ[_] := False
+OneQ[x_?NumberQ] := x == 1
 OneQ[True] := True
 OneQ[False] := False
+
+ZeroQ[0] := True
+ZeroQ[1] := False
+ZeroQ[_] := False
+ZeroQ[x_?NumberQ] := x == 1
+ZeroQ[False] := True
+ZeroQ[True] := False
+
+Parenthesis[x_Symbol] := ToBoxes[x,StandardForm]
+Parenthesis[x_Times] := ToBoxes[x,StandardForm]
+Parenthesis[x_?NumberQ] := ToBoxes[x,StandardForm]
+Parenthesis[x_Submanifold] := ToBoxes[x,StandardForm]
+Parenthesis[x_Multivector] := Sequence["(",ToBoxes[x,StandardForm],")"]
+Parenthesis[x_] := Sequence["(",ToBoxes[x,StandardForm],")"]
 
 Get["Grassmann`indices`"]
 Get["Grassmann`directsum`"]
@@ -81,7 +95,7 @@ Chain /: MakeBoxes[Chain[m_Submanifold,g_Integer,a_SparseArray],StandardForm] :=
   t = SparseArray[a];
   indices = Flatten[t["ColumnIndices"]];
   basis = IndexBasis[n,g][[indices]];
-  RowBox[Riffle[Map[RowBox[{t[[indices[[#]]]], PrintIndices[m, basis[[#]]]}] &, Range[Length[indices]]], "+"]]]
+  RowBox[Riffle[Map[RowBox[{Parenthesis[t[[indices[[#]]]]], PrintIndices[m, basis[[#]]]}] &, Range[Length[indices]]], "+"]]]
 
 (* Multivector *)
 
@@ -93,7 +107,7 @@ Multivector[Multivector[v_,a_SparseArray]] := Multivector[v,SparseArray[a]]
 
 Multivector /: MakeBoxes[Multivector[m_Submanifold,a_SparseArray],StandardForm] := Module[{n = Dims[m], t},
   t = SparseArray[a];
-  RowBox[Riffle[Map[RowBox[{t[[#]], PrintIndices[m, #-1]}] &,
+  RowBox[Riffle[Map[RowBox[{Parenthesis[t[[#]]], PrintIndices[m, #-1]}] &,
     System`Convert`NotebookMLDump`UnorderedIntersection[IndexBasis[m]+1,Flatten[t["ColumnIndices"]]]], "+"]]]
 
 Get["Grassmann`algebra`"]

@@ -56,7 +56,7 @@ SupermanifoldQ[V_] := IntegerQ[V] || ListQ[V]
 (* display *)
 
 MetricSignature /: MakeBoxes[s_MetricSignature, StandardForm] := Module[{dm,out,y,d,n},
- dm = DiffMode[s]; out = If[dm > 0, {SuperscriptBox[MakeBoxes[T], If[SymbolQ[dm],MakeBoxes[dm],dm]],
+ dm = DiffMode[s]; out = If[dm > 0, {SuperscriptBox["T", If[SymbolQ[dm],ToBoxes[dm,StandardForm],dm]],
     "\[LeftAngleBracket]"}, {"\[LeftAngleBracket]"}]; y = DyadQ[s]; 
  {d,n} = {DiffVars[s], Dims[s] - If[d > 0, If[y < 0, 2 d, d], 0]};
  InfinityQ[s] && AppendTo[out, vio[[1]]]; 
@@ -73,13 +73,15 @@ MetricSignature /: MakeBoxes[s_MetricSignature, StandardForm] := Module[{dm,out,
  (*NamesIndex[s] > 1 && AppendTo[out, SubscriptBox["", subs[NamesIndex[s]]]];*)
  RowBox[out]]
 
+(*Submanifold /: MakeBoxes[s_Submanifold, StandardForm] := MakeBoxes[Coefficient[s],StandardForm]*)
+
 Submanifold /: MakeBoxes[s_Submanifold, StandardForm] :=
  If[BasisQ[s], Module[{out = PrintIndices[Supermanifold[s],Bits[s]]},
-  If[CoefficientQ[s],RowBox[{Coefficient[s],out}],out]],
+  If[CoefficientQ[s],RowBox[{Parenthesis[Coefficient[s]],out}],out]],
   Module[{V,P,PnV,M,dm,out,y,d,dM,ind,n,nM},
     {V,dm} = {Supermanifold[s], DiffMode[s]}; P = If[SupermanifoldQ[V], V, Parent[V]];
     PnV = P != V; M = If[PnV, Supermanifold[P], V];
-    out = If[dm > 0, {SuperscriptBox[MakeBoxes[T], If[SymbolQ[dm],MakeBoxes[dm],dm]],
+    out = If[dm > 0, {SuperscriptBox["T", If[SymbolQ[dm],ToBoxes[dm,StandardForm],dm]],
       "\[LeftAngleBracket]"}, {"\[LeftAngleBracket]"}];
     PnV && PrependTo[out, SuperscriptBox["\[CapitalLambda]", Rank[V]]];
     {y,d,dM,ind} = {DyadQ[s], DiffVars[s], DiffVars[M], Indices[s]};
