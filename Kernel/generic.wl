@@ -119,9 +119,9 @@ DiffMask[m_] := ModuleScope[{d,typemax} = {DiffVars[m], typemax = BitShiftLeft[1
    Module[{v = BitShiftLeft[BitShiftLeft[1, d] - 1, Dims[m] - d]},
    If[d < 0, typemax - v, v]]]]
 SymmetricSplit[m_, bits_] := ModuleScope[{sm,dm} = {SymmetricMask[m,bits], DiffMask[m]};
-  If[DyadicQ[m], {BitAnd[sm, dm[1]], BitAnd[sm, dm[2]]}, sm]]
+  If[DyadicQ[m], {BitAnd[sm, dm[[1]]], BitAnd[sm, dm[[2]]]}, sm]]
 SymmetricMask[m_, bits_] := Module[{d = DiffMask[m]},
-  BitAnd[bits, If[DyadicQ[V], BitOr[d[[1]], d[[2]]], d]]]
+  BitAnd[bits, If[DyadicQ[m], BitOr@@d, d]]]
 SymmetricMask[m_, a_, b_] := Module[{d = DiffMask[m],dD,aD,bD},
   dD = If[DyadicQ[m], BitOr[d[[1]], d[[2]]], d];
   aD = BitAnd[a, dD]; bD = BitAnd[b, dD];
@@ -130,7 +130,7 @@ DiffCheck[m_, a_Integer, b_Integer] := Module[{d, db, v, hi, ho},
   {d, db, hi, ho} = {DiffVars[m], DiffMask[m],
     Infinity2Q[m, a, b] && ! OriginQ[m, a, b],
     Origin2Q[m, a, b] && ! InfinityQ[m, a, b]};
-  v = If[DyadicQ[m], BitOr[db[1], db[2]], db];
+  v = If[DyadicQ[m], BitOr[db[[1]], db[[2]]], db];
   (hi || ho) || (d != 0 &&
      CountOnes[BitAnd[a, v]] + CountOnes[BitAnd[b, v]] > DiffMode[m])]
 

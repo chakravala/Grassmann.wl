@@ -118,11 +118,11 @@ PrintLabel[m_List,bits_Integer,label_?BooleanQ,___] := SubText[pre[[1]],PrintInd
 
 PrintLabel[V_,bits_Integer,label_?BooleanQ,vec_,cov_,duo_,dif_] := Module[{M, nn,d,c,db},
 	{M,c,db} = {Supermanifold[V], DyadQ[V], DiffMask[V]}; {nn,d} = {Dims[M], DiffVars[M]};
-    If[c < 0, Module[{n,es,eps,par}, {n,es,eps,par} = {(nn-2*d)/2,
-          BitAnd[bits, Twiddle[BitOr[db[[1]],db[[2]]]]],
+    If[c < 0, Module[{n,es,eps,par}, {n,es,eps,par} = {(nn/2)-d,
+          BitAnd[bits, Twiddle[BitOr@@db]],
           ShiftIndices[V,BitAnd[bits, db[[1]]]]-(nn-2*d-Boole[InfinityQ[M]]-Boole[OriginQ[M]]),
           ShiftIndices[V,BitAnd[bits, db[[2]]]]-(nn-d-Boole[InfinityQ[M]]-Boole[OriginQ[M]])};
-        PrintIndices[ShiftIndices[V,BitAnd[es, 2^n-1]],ShiftIndices[V,BitShiftLeft[es,n]],eps,par,label,vec,cov,duo,dif]],
+        PrintIndices[ShiftIndices[V,BitAnd[es, 2^n-1]],ShiftIndices[V,BitShiftRight[es,n]],eps,par,label,vec,cov,duo,dif]],
       Module[{es,eps}, {es,eps} = {BitAnd[bits, Twiddle[db]],
         ShiftIndices[V,BitAnd[bits, db]]-(nn-d-Boole[InfinityQ[M]]-Boole[OriginQ[M]])};
         If[!EmptyQ[eps],

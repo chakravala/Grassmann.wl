@@ -62,12 +62,12 @@ MetricSignature /: MakeBoxes[s_MetricSignature, StandardForm] := Module[{dm,out,
  InfinityQ[s] && AppendTo[out, vio[[1]]]; 
  OriginQ[s] && AppendTo[out, vio[[2]]];
  d < 0 && AppendTo[out, SubscriptBox["", RowBox[Range[Abs[d], 1, -1]]]];
- out = Join[out, Map[sig[s,#] &, 
+ AppendTo[out, Map[sig[s,#] &,
     Range[Boole[InfinityQ[s]] + Boole[OriginQ[s]] + 1 + If[d < 0, Abs[d], 0], n]]];
  d > 0 && AppendTo[out, If[BitXor[Boole[y > 0], Boole[!PolyQ[s]]]>0, 
     SuperscriptBox["", RowBox[Range[1, Abs[d]]]],
     SubscriptBox["", RowBox[Range[1, Abs[d]]]]]];
- d > 0 && y < 0 && AppendTo[out, SuperscriptBox["", Range[1, Abs[d]]]];
+ d > 0 && y < 0 && AppendTo[out, SuperscriptBox["", RowBox[Range[1, Abs[d]]]]];
  AppendTo[out, "\[RightAngleBracket]"];
  y != 0 && AppendTo[out, If[y < 0, "*", "\[Transpose]"]];
  (*NamesIndex[s] > 1 && AppendTo[out, SubscriptBox["", subs[NamesIndex[s]]]];*)
@@ -131,7 +131,7 @@ CirclePlus[a_MetricSignature, b_MetricSignature] := Module[{n,nm,x,y,list,option
       If[list == {0,0,0,0,0,1},doc2m[0,0,If[nm,If[y!=FlipBits[n,x],0,-1],0]],
         If[list == {0,0,1,0,0,0},doc2m[0,0,If[nm,If[x!=FlipBits[n,y],0,-1],0]],
           Throw[domain]]]]];
-  MetricSignature[n+Rank[b],option,BitOr[x,BitShiftLeft[y,n]],Max[DiffVars[a],DiffVars[b]],Max[DiffMode[a],DiffMode[b]]]]
+  MetricSignature[n+Rank[b],option,BitOr[x,BitShiftLeft[BitAnd[y,Twiddle[DiffMask[b]]],Grade[b]]],Max[DiffVars[a],DiffVars[b]],Max[DiffMode[a],DiffMode[b]]]]
 
 CirclePlus[Submanifold[v_,n_,x_,___],Submanifold[w_,m_,y_,___]] := Module[{b=IntegerQ[w],
     z = If[(DualQ[v]==DualQ[w])||(v!=w^T), Combine[v,w,x,y],BitOr[Mixed[v,x],Mixed[w,u]]]},

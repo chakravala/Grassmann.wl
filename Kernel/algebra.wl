@@ -2,49 +2,45 @@
 (* This file is part of Grassmann. It is licensed under the AGPL license *)
 (* Grassmann Copyright (C) 2021 Michael Reed *)
 
-Map[Module[{sm=Symbol[StringJoin[#,"Multi"]],sb=Symbol[StringJoin[#,"Blade"]]},
-  sm[x_,Submanifold[v_,_,a_,___],Submanifold[v_,_,b_,___]] := sm[v,a,b,x]] &,
-{"Join","Geom","Meet","Skew"}]
+Tangiply[V_,Z_,v_] := If[SubmanifoldQ[v],Submanifold[v,GetBasis[LowOrder[V],Z]],Submanifold[v,GetBasis[V,Z]]];
 
 JoinMulti[v_,a_Integer,b_Integer,x_] := Module[{A,B,Q,Z,val},
-  If[!ZeroQ[x] && !DiffCheck[v,a,b],
+  If[ZeroQ[x] || DiffCheck[v,a,b],Nothing,
     {A,B,Q,Z} = SymmetricMask[v,a,b];
+    If[CountOnes[BitAnd[A,B]]>0,Nothing,
     val = Times[ParityInner[v,a,b],x];
-    If[DiffVars[v]!=0,If[Z!=0,val*=GetBasis[LowOrder[v],Z],Nothing];
+    If[TangentSpaceQ[v],If[Z!=0,val*=GetBasis[LowOrder[v],Z],Nothing];
       If[CountOnes[Q]+Order[val]>DiffMode[v],Return[Nothing],Nothing],Nothing];
-    Rule[BitOr[BitXor[A,B],Q]+1,val],Nothing]]
+    Rule[BitOr[BitXor[A,B],Q]+1,val]]]]
 
 GeomMulti[v_,a_Integer,b_Integer,x_] := Module[{A,B,Q,Z,pcc,bas,cc,val},
-  If[!ZeroQ[x] && !DiffCheck[v,a,b],
+  If[ZeroQ[x] || DiffCheck[v,a,b],Nothing,
     {A,B,Q,Z} = SymmetricMask[v,a,b];
     {pcc,bas,cc} = If[InfinityQ[v]&&OriginQ[v],Conformal[v,A,B],{False,BitXor[A,B],False}];
     val = Times[ParityInner[v,a,b],If[pcc,-x,x]];
     If[TangentSpaceQ[v],If[Z!=0,val*=GetBasis[LowOrder[v],Z],Nothing];
       If[CountOnes[Q]+Order[val]>DiffMode[v],Return[Nothing],Nothing],Nothing];
-    If[cc,Sequence[Rule[BitOr[bas,Q],val],Rule[BitOr[BitXor[ConformalMask[v],bas],Q]+1,If[InfinityOriginQ[v,A,B],-val,val]]],Rule[BitOr[bas,Q]+1,val]],Nothing]]
+    If[cc,Sequence[Rule[BitOr[bas,Q],val],Rule[BitOr[BitXor[ConformalMask[v],bas],Q]+1,If[InfinityOriginQ[v,A,B],-val,val]]],Rule[BitOr[bas,Q]+1,val]]]]
 
-MeetMulti[v_,a_Integer,b_Integer,x_] := Module[{g,c,t,z,val,aa,bb,Q,cc},
-  If[!ZeroQ[x],
+MeetMulti[v_,a_Integer,b_Integer,x_] := Module[{g,c,t,z,val},
+  If[ZeroQ[x],Nothing,
     {g,c,t,z} = Regressive[v,a,b];
     val = x;
     If[TangentSpaceQ[v],If[Z!=0,Module[{aa,bb,Q,cc},
       {aa,bb,Q,cc} = SymmetricMask[v,a,b];
       val*=GetBasis[LowOrder[v],Z];
       If[CountOnes[Q]+Order[val]>DiffMode[v],Return[Nothing],Nothing]],Nothing],Nothing];
-    If[t,Rule[c+1,Times[g,val]],Nothing],Nothing]]
+    If[t,Rule[c+1,Times[g,val]],Nothing]]]
 
-SkewMulti[v_,a_Integer,b_Integer,x_] := Module[{g,c,t,z,val,aa,bb,Q,cc},
-  If[!ZeroQ[x],
+SkewMulti[v_,a_Integer,b_Integer,x_] := Module[{g,c,t,z,val},
+  If[ZeroQ[x],Nothing,
     {g,c,t,z} = Interior[v,a,b];
     val = x;
     If[TangentSpaceQ[v],If[Z!=0,Module[{aa,bb,Q,cc},
       {aa,bb,Q,cc} = SymmetricMask[v,a,b];
       val*=GetBasis[LowOrder[v],Z];
       If[CountOnes[Q]+Order[val]>DiffMode[v],Return[Nothing],Nothing]],Nothing],Nothing];
-    If[t,Rule[c+1,Times[g,val]],Nothing],Nothing]]
-
-ExterBits[v_,a_,b_] := If[DiffVars[v]!=0,Module[{x,y,c,d},{x,y,c,d}=SymmetricMask[v,a,b];CountOnes[BitAnd[x,y]]==0],CountOnes[BitAnd[a,b]]==0]
-ExterMulti[v_,a_,b_,x_] := If[ExterBits[v,a,b],JoinMulti[v,a,b,x],Nothing]
+    If[t,Rule[c+1,Times[g,val]],Nothing]]]
 
 product[name_,a:Multivector[v_,A_],b:Multivector[v_,B_]] :=
   Multivector[v,SparseArray[Map[name[v,#[[1]],#[[2]]] &,
@@ -53,63 +49,22 @@ product[name_,a:Submanifold[v_,_,A_,x_],b:Multivector[v_,B_]] :=
   Multivector[v,SparseArray[Map[name[v,{A+1}->x,#] &, Drop[ArrayRules[B],-1]], Length[B]]]
 product[name_,a:Multivector[v_,A_],b:Submanifold[v_,_,B_,y_]] :=
   Multivector[v,SparseArray[Map[name[v,#,{B+1}->y] &, Drop[ArrayRules[A],-1]], Length[A]]]
+product[name_,Submanifold[V_,_,X_,x_],Submanifold[V_,_,Y_,y_]] :=
+  GetBasis[V,name[V,X,Y,x,y]]
 
 Map[Module[{prod=#[[1]],name=#[[2]]},
   name[v_,a_,b_,x_,y_] := name[v,a,b,derivemul[v,a,b,x,y]];
   name[v_,Rule[List[a_],x_],Rule[List[b_],y_]] := name[v,a-1,b-1,x,y];
   Multivector /: prod[a_Multivector,b_Multivector] := product[name,a,b];
   Multivector /: prod[a_Submanifold,b_Multivector] := product[name,a,b];
-  Multivector /: prod[a_Multivector,b_Submanifold] := product[name,a,b]] &,
-{{Wedge,ExterMulti},{NonCommutativeMultiply,GeomMulti},{Times,GeomMulti},{Vee,MeetMulti},{Dot,SkewMulti}}]
-(*{{Wedge,ExterChain},{NonCommutativeMultiply,GeomChain},{Times,GeomChain},{Vee,MeetChain},{Dot,SkewChain}}*)
+  Multivector /: prod[a_Multivector,b_Submanifold] := product[name,a,b];
+  Submanifold /: prod[a_Submanifold,b_Submanifold] := product[name,a,b]] &,
+{{Wedge,JoinMulti},{NonCommutativeMultiply,GeomMulti},{Times,GeomMulti},{Vee,MeetMulti},{Dot,SkewMulti}}]
+(*{{Wedge,JoinChain},{NonCommutativeMultiply,GeomChain},{Times,GeomChain},{Vee,MeetChain},{Dot,SkewChain}}*)
 
-mul[a:Submanifold[V_,_,ba_,___],b:Submanifold[V_,_,bb_,___]] := mul[a,b,derivemul[V,ba,bb,1,True]]
-mul[a:Submanifold[V_,_,ba_,___],b:Submanifold[V_,_,bb_,___],der_] := If[DiffCheck[V,ba,bb] || ZeroQ[der],Return[GZero[V]],Module[{A,B,Q,Z,pcc,bas,cc,d,out},
-    {A,B,Q,Z} = SymmetricMask[V,ba,bb];
-    {pcc,bas,cc} = If[InfQ[V] && OriginQ[V], Conformal[V,A,B], {False,BitXor[A,B],False}];
-    d = GetBasis[V,BitOr[bas,Q]];
-    out = If[MetricSignatureQ[V] || CountOnes[BitAnd[A,B]]==0,If[Xor[Parity[a,b],pcc],-d,d],Times[Times[If[pcc,-1,1],ParityInner[V,A,B]],d]];
-    If[(DiffVars[V]!=0)&&(Z!=0),out = Times[GetBasis[LowOrder[V],Z],out],Nothing];
-    If[cc, Module[{v=Coefficient[out]}, out+Times[GetBasis[V,BitXor[ConformalMask[V],BitOr[bas,Q]]],If[InfinityOriginQ[V,A,B],-v,v]]], out]
-]]
-
-Submanifold /: Times[a:Submanifold[V_,_,A_,x_],b:Submanifold[V_,_,B_,y_]] := Module[{v=derivemul[V,A,B,x,y]},Times[v,mul[a,b,v]]]
-Submanifold /: NonCommutativeMultiply[a:Submanifold[V_,_,A_,x_],b:Submanifold[V_,_,B_,y_]] := Module[{v=derivemul[V,A,B,x,y]},Times[v,mul[a,b,v]]]
-(*Submanifold /: Times[a:Submanifold[V_,__],b:Submanifold[V_,__]] := mul(a,b)*)
-
-Tangiply[V_,Z_,v_] := If[SubmanifoldQ[v],Submanifold[v,GetBasis[LowOrder[V],Z]],Submanifold[v,GetBasis[V,Z]]];
-
-Submanifold /: Wedge[a:Submanifold[V_,_,X_,x_],b:Submanifold[V_,_,Y_,y_]] := Module[{A,B,Q,Z,v},
-  {A,B,Q,Z} = SymmetricMask[V,X,Y];
-  If[CountOnes[BitAnd[A,B]]>0 || DiffCheck[V,X,Y],Return[GZero[V]],Nothing];
-  v = derivemul[V,X,Y,x,y];
-  If[TangentSpaceQ[V] && Z!=0,
-    v = Tangiply[V,Z,v];
-    If[CountOnes[Q]+Order[v]>DiffMode[V],Return[GZero[V]],Nothing]];
-  Submanifold[If[Parity[a,b],-v,v],GetBasis[V,BitOr[BitXor[A,B],Q]]]]
-
-Submanifold /: Vee[a:Submanifold[V_,_,X_,x_],b:Submanifold[V_,_,Y_,y_]] := Module[{p,c,t,Z,v},
-  {p,c,t,Z} = Regressive[V,X,Y];
-  If[!t,Return[GZero[V]],Nothing];
-  v = derivemul[V,X,Y,x,y];
-  If[TangentSpaceQ[V] && Z!=0,Module[{A,B,Q,z},
-    {A,B,Q,z} = SymmetricMask[V,X,Y];
-    v = Tangiply[V,Z,v];
-    If[CountOnes[Q]+Order[v]>DiffMode[V],Return[GZero[V]],Nothing]]];
-  Submanifold[If[OneQ[p],v,p*v],GetBasis[V,c]]]
-
-Contraction[a:Submanifold[V_,_,X_,x_],b:Submanifold[V_,_,Y_,y_]] := Module[{g,c,t,Z,v},
-  {g,c,t,Z} = Interior[V,X,Y];
-  If[!t,Return[GZero[V]],Nothing];
-  v = derivemul[V,X,Y,x,y]; (*use Dot product?*)
-  If[TangentSpaceQ[V] && Z!=0,Module[{A,B,Q,z},
-    {A,B,Q,z} = SymmetricMask[V,X,Y];
-    v = Tangiply[V,Z,v];
-    If[CountOnes[Q]+Order[v]>DiffMode[V],Return[GZero[V]],Nothing]]];
-  Submanifold[If[MetricSignatureQ[V],If[g,-v,v],g*v],GetBasis[V,c]]]
-
-Submanifold /: Dot[a_Submanifold,b_Submanifold] := Contraction[a,b]
-
+Multivector /: Cross[a_Multivector,b_Multivector] := HodgeDual[Wedge[a,b]]
+Multivector /: Cross[a_Submanifold,b_Multivector] := HodgeDual[Wedge[a,b]]
+Multivector /: Cross[a_Multivector,b_Submanifold] := HodgeDual[Wedge[a,b]]
 Submanifold /: Cross[a_Submanifold,b_Submanifold] := HodgeDual[Wedge[a,b]]
 
 (* products *)
@@ -127,12 +82,12 @@ derivemul[V_,a_,b_,v_,x_?BooleanQ] := If[!(TangentSpaceQ[V] && DyadicQ[V]),v,Mod
 derivemul[V_,a_,b_,x_,y_] := If[!(TangentSpaceQ[V] && DyadicQ[V]),x*y,Module[{sa,sb,ca,cb},
   {sa,sb} = {SymmetricSplit[V,a],SymmetricSplit[V,b]};
   {ca,cb} = {CountOnes[sa[[2]]],CountOnes[sb[[2]]]};
-  If[(ca == cb == 0) || ((ca != 0) && (cb != 0)),x*y,
+  If[(ca == cb == 0) || ((ca != 0) && (cb != 0)),x*y,Module[{prev},
     prev = Fold[derive,If[ca==0,{a,b},{b,a}], Map[GetBasis[v,#] &, IndexSplit[If[ca==0,sa,sb][[1]]]]];
     While[SubmanifoldQ[prev[[1]]],
       prev = Fold[derive,{Coefficient[prev[[1]]],prev[[2]]}, Map[GetBasis[v,#] &, IndexSplit[Bits[prev[[1]]]]]]];
     If[ca==0,prev[[1]]*prev[[2]],prev[[2]]*prev[[1]]]
-]]]
+]]]]
 
 (* unary *)
 
@@ -140,15 +95,21 @@ Multivector /: Transpose[Multivector[v_,a_SparseArray]] := If[DyadicQ[v],Module[
   {ib,val} = {a["AdjacencyLists"],a["NonzeroValues"]};
   Multivector[v,SparseArray[Map[Rule[Dual[v,ib[[#]]-1,Dims[v]/2]+1,Conjugate[val[[#]]]]] &,Range[Length[ib]],Length[a]]]],Multivector[Dual[v],Map[Conj,a]]]
 
+Unprotect[\[FivePointedStar]]
+\[FivePointedStar] = HodgeDual
+Protect[\[FivePointedStar]]
+Submanifold /: HodgeDual[s_Submanifold] := ComplementRightHodge[s]
+Multivector /: HodgeDual[s_Multivector] := ComplementRightHodge[s]
+Chain /: HodgeDual[s_Chain] := ComplementRightHodge[s]
+
 Map[Module[{s = Symbol[StringJoin["Complement",#]], p = Symbol[StringJoin["Parity",#]], h, pg, pn},
   {h,pg,pn} = {Symbol[StringJoin[ToString[s],"Hodge"]],Symbol[StringJoin[ToString[p],"Hodge"]],Symbol[StringJoin[ToString[p],"Null"]]};
   Map[Module[{c = #[[1]], p = #[[2]]},
-    c[b:Submanifold[V_,G_,B_,x_]] := If[x==0,GZero[V],Module[{e = ToString[c]!=ToString[h],d,z,v},
-      z = If[e,0,InfinityQ[V]+OriginQ[V]];
-      d = GetBasis[V,BitComplement[Dims[V],B,DiffVars[V],z]];
+    c[b:Submanifold[V_,G_,B_,x_]] := If[ZeroQ[x],GZero[V],Module[{e = ToString[c]!=ToString[h],z,v},
+      z = If[e,0,Boole[InfinityQ[V]]+Boole[OriginQ[V]]];
       If[DyadicQ[V],Throw[domain],
-        v = Conjugate[x]*If[e,pn[V,B,Coefficient[d]],Coefficient[d]];
-        If[MetricSignatureQ[V],If[p[b],Submanifold[-v,d],If[OneQ[v],d,Submanifold[v,d]]],Submanifold[p[b]*v,d]]]]]] &
+        v = Conjugate[x]*If[e,pn[V,B,1],1];
+        GetBasis[V,BitComplement[Dims[V],B,DiffVars[V],z],p[b]*v]]]]] &
   ,{{s,p},{h,pg}}]] &,{"Left","Right"}]
 
 Map[Module[{c,p,h,ph,pn},

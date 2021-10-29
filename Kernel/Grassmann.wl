@@ -83,6 +83,11 @@ AllocateBasis[manifold_] := AllocateBasis[Submanifold[manifold]]
 AllocateBasis[m_Submanifold] := Set @@@ Transpose[{Unevaluated /@ Labels[m], GeometricAlgebraBasis[m]}]
 
 GetBasis[V_, B_Integer] := Submanifold[V, CountOnes[B], B]
+GetBasis[V_, B_Integer, x_] := Submanifold[V, CountOnes[B], B, x]
+GetBasis[V_, Rule[B_Integer,x_]] := GetBasis[V,B-1,x]
+GetBasis[V_, r__Rule] := Multivector[V,r]
+GetBasis[V_, Nothing] := GetBasis[V]
+GetBasis[V_] := GZero[V]
 
 GZero[V_] := 0 GOne[V]
 GOne[V_] := Submanifold[V, 0]
@@ -104,9 +109,9 @@ Multivector /: SparseArray[Multivector[_,a_]] := SparseArray[Coefficient[a]]
 
 Multivector[m_Multivector] := m
 Multivector[Multivector[v_,a_SparseArray]] := Multivector[v,SparseArray[a]]
+Multivector[v_,r__Rule] := Multivector[v,SparseArray[{r},BitShiftLeft[1,Dims[v]]]]
 
-Multivector /: MakeBoxes[Multivector[m_Submanifold,a_SparseArray],StandardForm] := Module[{n = Dims[m], t},
-  t = SparseArray[a];
+Multivector /: MakeBoxes[Multivector[m_Submanifold,a_SparseArray],StandardForm] := Module[{t = SparseArray[a]},
   RowBox[Riffle[Map[RowBox[{Parenthesis[t[[#]]], PrintIndices[m, #-1]}] &,
     System`Convert`NotebookMLDump`UnorderedIntersection[IndexBasis[m]+1,Flatten[t["ColumnIndices"]]]], "+"]]]
 
