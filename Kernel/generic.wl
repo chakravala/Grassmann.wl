@@ -7,6 +7,7 @@ Supermanifold[m_MetricSignature] := m
 Supermanifold[Submanifold[m_, __]] := m
 Parent[m_] := Manifold[m]
 
+MetricProduct[Submanifold[_Integer,___],_] := 1
 MetricProduct[v_,b_Integer] := MetricProduct[v,Indices[b]]
 MetricProduct[v_,ind_List] := Times@@Map[BitSign,v[[ind]]]
 

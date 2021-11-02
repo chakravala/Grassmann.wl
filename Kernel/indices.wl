@@ -156,11 +156,15 @@ IndexParity[indices_List,m_] := ModuleScope[{k,t,ind} = {1, False, indices};
 
 (* parity *)
 
-Map[Module[{p = Symbol[StringJoin["Parity",ToString[#]]]},
+SymbolJoin[list__String] := Symbol[StringJoin[list]]
+SymbolJoin[a_String,b_Symbol] := SymbolJoin[a,ToString[b]]
+SymbolJoin[a_Symbol,b_] := SymbolJoin[ToString[a],b]
+
+Map[Module[{p = SymbolJoin["Parity",#]},
   Submanifold /: #[b:Submanifold[V_,G_,B_,_]] := If[Coefficient[b]!=0,If[p[Grade[V,B]],Submanifold[-Coefficient[b],b],b],GZero[Manifold[b]]]] &
 ,{Reverse,Conjugate}]
 
-Map[Module[{p = Symbol[StringJoin["Parity",ToString[#]]]},
+Map[Module[{p = SymbolJoin["Parity",#]},
   #[b:Submanifold[V_,G_,B_]] := If[Coefficient[b]!=0,If[p[Grade[V,B]],Submanifold[-Coefficient[b],b],b],GZero[Manifold[b]]]] &
 ,{Involute,Clifford}]
 
@@ -168,23 +172,23 @@ Map[Module[{p = Symbol[StringJoin["Parity",ToString[#]]]},
 
 ParityRightHodge[manifold_Integer,bits_Integer,grade_,n_:Nothing] := Xor[OddQ[manifold],ParityRight[manifold,bits,grade,n]]
 ParityLeftHodge[manifold_Integer,bits_Integer,grade_,n_] := Xor[OddQ[grade] && EvenQ[n], ParityRightHodge[manifold,bits,grade,n]]
-ParityRight[manifold_Integer,bits_Integer,grade_,n_:Nothing] := OddQ[bits+(grade+1)*grade/2]
-ParityLeft[manifold_Integer,bits_Integer,grade_,n_] := Xor[OddQ[grade] && EvenQ[n], ParityRight[manifold,bits,grade,n]]
+ParityRightCalc[manifold_Integer,bits_Integer,grade_,n_:Nothing] := OddQ[bits+(grade+1)*grade/2]
+ParityLeftCalc[manifold_Integer,bits_Integer,grade_,n_] := Xor[OddQ[grade] && EvenQ[n], ParityRight[manifold,bits,grade,n]]
 
-Map[Module[{p = Symbol[StringJoin["Parity",#]], pg, pn},
-  {pg,pn} = {Symbol[StringJoin["Parity",#,"Hodge"]],Symbol[StringJoin["Parity",#,"Null"]]};
-  p[m_Integer,bits_Integer,n_Integer] := p[0,Total[Indices[bits]],CountOnes[bits],n];
+Map[Module[{p = SymbolJoin["Parity",#], pg, pn, pc},
+  {pc,pg,pn} = {SymbolJoin[p,"Calc"],SymbolJoin["Parity",#,"Hodge"],SymbolJoin["Parity",#,"Null"]};
+  p[m_Integer,bits_Integer,n_Integer] := pc[0,Total[Indices[bits]],CountOnes[bits],n];
   pg[m_Integer,bits_Integer,n_Integer] := pg[CountOnes[BitAnd[m,bits]],Total[Indices[bits]],CountOnes[bits],n];
   pn[m_,bits_,v_] := If[ConformalQ[m] && CountOnes[BitAnd[bits,3]]==1, If[OddQ[bits],2*v,v/2],v];
   (*pg[m_Integer,bits_Integer] := pg[m,bits,CountOnes[bits]];
-  pg[m_Integer,bits_Integer,grade_] := If[Xor[p[0,Total[Indices[BitAnd[bits,BitShiftLeft[1,Dims[m]-DiffVars[m]]]-1]],grade,Dims[m]-DiffVars[m]],ConformalQ[m] && (BitAnd[bits,3]==2)],-1,1];*)
+  pg[m_Integer,bits_Integer,grade_] := If[Xor[pc[0,Total[Indices[BitAnd[bits,BitShiftLeft[1,Dims[m]-DiffVars[m]]]-1]],grade,Dims[m]-DiffVars[m]],ConformalQ[m] && (BitAnd[bits,3]==2)],-1,1];*)
   p[V_Submanifold,B_] := p[V,B,CountOnes[B]];
   pg[V_Submanifold,B_] := pg[V,B,CountOnes[B]];
-  p[V_Submanifold,B_,G_] := If[p[0,Total[Indices[BitAnd[B,BitShiftLeft[1,Dims[V]-DiffVars[V]]-1]]],G,Dims[V]-DiffVars[v]],-1,1];
+  p[V_Submanifold,B_,G_] := If[pc[0,Total[Indices[BitAnd[B,BitShiftLeft[1,Dims[V]-DiffVars[V]]-1]]],G,Dims[V]-DiffVars[v]],-1,1];
   pg[V_Submanifold,B_,G_] := Module[{dd = Dims[V]-DiffVars[V], ind, g},
     ind = Indices[BitAnd[B,BitShiftLeft[1,dd]-1]];
     g = MetricProduct[V,ind];
-    If[Xor[p[0,Total[ind],G,dd],ConformalQ[V] && (BitAnd[B,3] == 2)],-g,g]];
+    If[Xor[pc[0,Total[ind],G,dd],ConformalQ[V] && (BitAnd[B,3] == 2)],-g,g]];
   p[Submanifold[V_,G_,B_,___]] := p[V,B,G];
   pg[Submanifold[V_,G_,B_,___]] := pg[V,B,G]] &,
 {"Left","Right"}]
@@ -244,14 +248,14 @@ ParityInterior[v_Integer,a_,b_] := Module[{A,B,Q,Z},
   {A,B,Q,Z} = SymmetricMask[v,a,b];
   If[DiffCheck[v,A,B] || cga[v,A,B],{False,0,False,Z},Module[{p,c,t,z},
     {p,c,t,z} = ParityRegressive[v,A,BitComplement[v,B,DiffVars[v]],True];
-    {If[t, If[Xor[p,ParityRight[0,Total[Indices[B]],CountOnes[B]]], -1, 1], 1], BitOr[c,Q], t, Z}]]]
+    {If[t, If[Xor[p,ParityRightCalc[0,Total[Indices[B]],CountOnes[B]]], -1, 1], 1], BitOr[c,Q], t, Z}]]]
 
 ParityInterior[v_,a_,b_] := Module[{A,B,Q,Z,n},
   {A,B,Q,Z} = SymmetricMask[v,a,b]; n = Rank[v];
   If[DiffCheck[v,A,B] || cga[v,A,B],{False,0,False,Z},Module[{p,c,t,z,ind,g},
     {p,c,t,z} = ParityRegressive[MetricSignature[v],A,BitComplement[n,B,DiffVars[v]],True];
     ind = Indices[B]; g = MetricProduct[v,ind];
-    {If[t, If[Xor[p,ParityRight[0,Total[ind],CountOnes[B]]], -g, g], g], BitOr[c,Q], t, Z}]]]
+    {If[t, If[Xor[p,ParityRightCalc[0,Total[ind],CountOnes[B]]], -g, g], g], BitOr[c,Q], t, Z}]]]
 
 ParityInner[v_Integer,a_,b_] := Module[{A,B,Q,Z},{A,B,Q,Z} = SymmetricMask[v,a,b]; If[Parity[v,A,B], -1, 1]]
 
@@ -270,7 +274,7 @@ Conformal[Submanifold[m_,_,a_,_],Submanifold[m_,_,b_,_]] := Conformal[m,a,b]
 Regressive[Submanifold[m_,_,a_,_],Submanifold[m_,_,b_,_]] := Regressive[m,a,b]
 Interior[Submanifold[m_,_,a_,_],Submanifold[m_,_,b_,_]] := Interior[m,a,b]
 
-Map[Module[{calc = Symbol[StringJoin[{"Parity",ToString[#]}]]},
+Map[Module[{calc = SymbolJoin["Parity",#]},
   #[v_,a_,b_] := If[Dims[Supermanifold[v]] > SparseLimit,
     calc[v,a,b],#[v,a,b] = calc[v,a,b]];
   (*#[Submanifold[v_,_,b_,_],Submanifold[v_,_,c_,_]] := #[v,a,b];*)

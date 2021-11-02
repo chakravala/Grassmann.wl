@@ -32,6 +32,8 @@ Submanifold[manifold_, indices_List, c_:1] := If[Length[Union[indices]]!=Length[
 Submanifold[manifold_, 0] := Submanifold[manifold, 0 , 0]
 Submanifold /: Part[Submanifold[_Integer, __], _Integer] := 1
 Submanifold /: Part[Submanifold[_List, __], _Integer] := 1
+Submanifold /: Part[Submanifold[_Integer, __], l_List] := ConstantArray[1,Length[l]]
+Submanifold /: Part[Submanifold[_List, __],  _List] := ConstantArray[1,Length[l]]
 Submanifold /: Part[Submanifold[MetricSignature[_, _, bits_, ___], _, basis_, ___], index_] := BitSign[BitAtIndex[bits, Indices[basis][[index]]]]
 Submanifold /: Part[Submanifold[MetricSignature[_], _, basis_, ___], index_] := BitSign[BitAtIndex[0, Indices[basis][[index]]]]
 Submanifold /: Part[Submanifold[MetricSignature[_,_], _, basis_, ___], index_] := BitSign[BitAtIndex[0, Indices[basis][[index]]]]
@@ -61,8 +63,8 @@ MetricSignature /: MakeBoxes[s_MetricSignature, StandardForm] := Module[{dm,out,
  {d,n} = {DiffVars[s], Dims[s] - If[d > 0, If[y < 0, 2 d, d], 0]};
  InfinityQ[s] && AppendTo[out, vio[[1]]]; 
  OriginQ[s] && AppendTo[out, vio[[2]]];
- d < 0 && AppendTo[out, SubscriptBox["", RowBox[Range[Abs[d], 1, -1]]]];
- AppendTo[out, Map[sig[s,#] &,
+ d < 0 && AppendTo[out, SubscriptBox["", Range[Abs[d], 1, -1]]];
+ out = Join[out, Map[sig[s,#] &,
     Range[Boole[InfinityQ[s]] + Boole[OriginQ[s]] + 1 + If[d < 0, Abs[d], 0], n]]];
  d > 0 && AppendTo[out, If[BitXor[Boole[y > 0], Boole[!PolyQ[s]]]>0, 
     SuperscriptBox["", RowBox[Range[1, Abs[d]]]],
