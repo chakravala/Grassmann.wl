@@ -20,6 +20,8 @@ MetricSignature[v:Submanifold[_,n_,__]] := MetricSignature[n,OptionsQ[v],FromDig
 MetricSignature[s_String] := MetricSignature[StringLength[s],doc2m[Boole[StringContainsQ[s,vio[[1]]]],Boole[StringContainsQ[s,vio[[2]]]]],FromDigits[Reverse[Map[Boole[# == "-"] &, Characters[StringReplace[s, {vio[[1]] -> "+", vio[[2]] -> "-"}]]]], 2]]
 MetricSignature[n_,m_,s_,f_,d_,v_String] := MetricSignature[n,m,s,f,d,{v,pre[[2]],pre[[3]],pre[[4]]}]
 
+DiagonalForm[form_List,option_:0] := MetricSignature[Length[form],option,form]
+
 Submanifold[signature_String] := Submanifold[MetricSignature[signature]]
 Submanifold[manifold_] := Submanifold[manifold, Rank[manifold]]
 Submanifold[manifold_Symbol] := Submanifold[manifold, manifold]
@@ -57,6 +59,9 @@ SupermanifoldQ[V_] := IntegerQ[V] || ListQ[V]
 
 (* display *)
 
+SignatureQ[_MetricSignature] := True
+SignatureQ[MetricSignature[_,_,_List,___]] := False
+
 MetricSignature /: MakeBoxes[s_MetricSignature, StandardForm] := Module[{dm,out,y,d,n},
  dm = DiffMode[s]; out = If[dm > 0, {SuperscriptBox["T", If[SymbolQ[dm],ToBoxes[dm,StandardForm],dm]],
     "\[LeftAngleBracket]"}, {"\[LeftAngleBracket]"}]; y = DyadQ[s]; 
@@ -64,8 +69,10 @@ MetricSignature /: MakeBoxes[s_MetricSignature, StandardForm] := Module[{dm,out,
  InfinityQ[s] && AppendTo[out, vio[[1]]]; 
  OriginQ[s] && AppendTo[out, vio[[2]]];
  d < 0 && AppendTo[out, SubscriptBox["", Range[Abs[d], 1, -1]]];
- out = Join[out, Map[sig[s,#] &,
-    Range[Boole[InfinityQ[s]] + Boole[OriginQ[s]] + 1 + If[d < 0, Abs[d], 0], n]]];
+ If[SignatureQ[s], out = Join[out, Map[sig[s,#] &,
+     Range[Boole[InfinityQ[s]] + Boole[OriginQ[s]] + 1 + If[d < 0, Abs[d], 0], n]]],
+   Do[AppendTo[out, sig[s,k]]; If[k!=Grade[s],AppendTo[out,","],Nothing];,
+     {k, Boole[InfinityQ[s]] + Boole[OriginQ[s]] + 1 + If[d < 0, Abs[d], 0], n}]];
  d > 0 && AppendTo[out, If[BitXor[Boole[y > 0], Boole[!PolyQ[s]]]>0, 
     SuperscriptBox["", RowBox[Range[1, Abs[d]]]],
     SubscriptBox["", RowBox[Range[1, Abs[d]]]]]];
@@ -91,7 +98,7 @@ Submanifold /: MakeBoxes[s_Submanifold, StandardForm] :=
       Dims[M] - If[dM > 0, If[y < 0, 2*dM, dM], 0]};
     InfinityQ[s] && AppendTo[out, vio[[1]]];
     OriginQ[s] && AppendTo[out, vio[[2]]];
-    Do[AppendTo[out, If[MemberQ[ind, k], sig[M, k], "_"]]; If[printsep[M, k, Grade[s]],AppendTo[out,","],Nothing];,
+    Do[AppendTo[out, If[MemberQ[ind, k], sig[M, k], "_"]]; If[printsep[M, k, NM],AppendTo[out,","],Nothing];,
       {k, Boole[InfinityQ[s]] + Boole[OriginQ[s]] + 1 + If[d < 0, Abs[d], 0], NM}];
     d > 0 && AppendTo[out, If[BitXor[Boole[y > 0], !PolyQ[s]],
       SuperscriptBox["", RowBox[Riffle[ind[[Range[n+1, n+Abs[d]]]] - NM, ","]]],
@@ -106,6 +113,10 @@ Submanifold /: MakeBoxes[s_Submanifold, StandardForm] :=
 
 V0 = MetricSignature[0]
 \[DoubleStruckCapitalR] = MetricSignature[1]
+
+R301Q[MetricSignature[_,_,m_List,___]] := m == {1,1,1,0}
+R301Q[SubManifold[V_,___]] := R301Q[V]
+R301Q[V_] := False
 
 (* set theory ∪,∩,⊆,⊇ *)
 

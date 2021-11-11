@@ -28,6 +28,7 @@ IndexBasis[dim_Integer,grade_Integer]:=If[dim>SparseLimit,IndexBasisCalc[dim,gra
 IndexBasis[dim_Integer] := Flatten[Table[IndexBasis[dim, grade], {grade, 0, dim}]]
 IndexBasis[manifold_] := IndexBasis[Dims[manifold]]
 
+BitAtIndex[bits_List, index_] := bits[[index]]
 BitAtIndex[bits_Integer, index_Integer] := BitAtIndex[bits, index] = Module[
  {mask = BitShiftLeft[1, index - 1]}, BitAnd[mask, bits] == mask]
 BitAtIndex[bits_Integer, indices_] := Map[BitAtIndex[bits, #] &, indices]
@@ -52,16 +53,20 @@ char[0] := vio[[2]]
 char[n_Integer] := n
 EmptyQ[set_] := Length[set] == 0
 printsep[_, _MetricSignature, _, _] := Nothing
+printsep[out_, MetricSignature[_,_,_List,___], k_, n_] := k != n && AppendTo[out, ","]
 printsep[_, _Integer, _, _] := Nothing
 printsep[out_, _, k_, n_] := k != n && AppendTo[out, ","]
 printsep[_MetricSignature,_,_] := False
+printsep[MetricSignature[_,_,_List,___],k_,n_] := k != n
 printsep[_Integer,_,_] := False
 printsep[_List,_,_] := False
 printsep[_,k_,n_] := k != n
 sig[_Integer, _] := "x"(*"\[Times]"*)
 sig[manifold_List, index_] := SubscriptBox["x",ToString[manifold[[index]]]]
-sig[manifold_, index_] := manifold[[index]]
+sig[manifold_, index_] := ToBoxes[manifold[[index]],StandardForm]
 sig[manifold_MetricSignature, index_] := If[manifold[[index]], "-", "+"]
+sig[MetricSignature[_,_,list_List,___], index_] := ToBoxes[list[[index]],StandardForm]
+sig[MetricSignature[m_List,_,list_List,___], index_] := SubscriptBox[ToBoxes[list[[index]],StandardForm],ToString[m[[index]]]]
 sig[manifold:Submanifold[m_List,___], index_] := SubscriptBox[manifold[[index]],ToString[m[[index]]]]
 sig[manifold:MetricSignature[m_List,___], index_] := SubscriptBox[If[manifold[[index]], "-", "+"],ToString[m[[index]]]]
 
@@ -160,20 +165,12 @@ SymbolJoin[list__String] := Symbol[StringJoin[list]]
 SymbolJoin[a_String,b_Symbol] := SymbolJoin[a,ToString[b]]
 SymbolJoin[a_Symbol,b_] := SymbolJoin[ToString[a],b]
 
-Map[Module[{p = SymbolJoin["Parity",#]},
-  Submanifold /: #[b:Submanifold[V_,G_,B_,_]] := If[Coefficient[b]!=0,If[p[Grade[V,B]],Submanifold[-Coefficient[b],b],b],GZero[Manifold[b]]]] &
-,{Reverse,Conjugate}]
-
-Map[Module[{p = SymbolJoin["Parity",#]},
-  #[b:Submanifold[V_,G_,B_]] := If[Coefficient[b]!=0,If[p[Grade[V,B]],Submanifold[-Coefficient[b],b],b],GZero[Manifold[b]]]] &
-,{Involute,Clifford}]
-
 (* complement parity *)
 
-ParityRightHodge[manifold_Integer,bits_Integer,grade_,n_:Nothing] := Xor[OddQ[manifold],ParityRight[manifold,bits,grade,n]]
+ParityRightHodge[manifold_Integer,bits_Integer,grade_,n_:Nothing] := Xor[OddQ[manifold],ParityRightCalc[manifold,bits,grade,n]]
 ParityLeftHodge[manifold_Integer,bits_Integer,grade_,n_] := Xor[OddQ[grade] && EvenQ[n], ParityRightHodge[manifold,bits,grade,n]]
 ParityRightCalc[manifold_Integer,bits_Integer,grade_,n_:Nothing] := OddQ[bits+(grade+1)*grade/2]
-ParityLeftCalc[manifold_Integer,bits_Integer,grade_,n_] := Xor[OddQ[grade] && EvenQ[n], ParityRight[manifold,bits,grade,n]]
+ParityLeftCalc[manifold_Integer,bits_Integer,grade_,n_] := Xor[OddQ[grade] && EvenQ[n], ParityRightCalc[manifold,bits,grade,n]]
 
 Map[Module[{p = SymbolJoin["Parity",#], pg, pn, pc},
   {pc,pg,pn} = {SymbolJoin[p,"Calc"],SymbolJoin["Parity",#,"Hodge"],SymbolJoin["Parity",#,"Null"]};
@@ -202,6 +199,7 @@ BitComplement[dim_Integer,bits_Integer,d_Integer:0,p_Integer:0] := Module[{up,nd
 
 DigitsFast[b_,n_] := PadRight[Reverse[IntegerDigits[b,2]],n+1]
 
+ParityJoin[n_,a_,b_] := OddQ[Dot[DigitsFast[a,n],Accumulate[DigitsFast[BitShiftLeft[b,1],n]]]]
 ParityJoin[n_,s_,a_,b_] := OddQ[Dot[DigitsFast[a,n],Accumulate[DigitsFast[BitShiftLeft[b,1],n]]]+CountOnes[BitAnd[BitAnd[a,b],s]]]
 
 ConformalMask[v_] := 2^If[InfinityQ[v] && OriginQ[v],2,0]-1
@@ -261,8 +259,8 @@ ParityInner[v_Integer,a_,b_] := Module[{A,B,Q,Z},{A,B,Q,Z} = SymmetricMask[v,a,b
 
 ParityInner[v_,a_,b_] := Module[{A,B,Q,Z,g},
   {A,B,Q,Z} = SymmetricMask[v,a,b];
-  g = Abs[Times@@Map[BitSign,v[[Indices[BitAnd[A,B]]]]]];
-  If[Parity[MetricSignature[v],A,B], -g, g]]
+  g = Times@@Map[BitSign,v[[Indices[BitAnd[A,B]]]]];
+  If[Parity[Grade[v],A,B], -g, g]]
 
 
 Parity[n_,s_,a_,b_] := If[n>SparseLimit,ParityJoin[n,s,a,b],Parity[n,s,a,b]=ParityJoin[n,s,a,b]]

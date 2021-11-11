@@ -11,9 +11,13 @@ MetricProduct[Submanifold[_Integer,___],_] := 1
 MetricProduct[v_,b_Integer] := MetricProduct[v,Indices[b]]
 MetricProduct[v_,ind_List] := Times@@Map[BitSign,v[[ind]]]
 
+MetricSignature /: Det[MetricSignature[_,_,m_List,___]] := Times@@m
 MetricSignature /: Det[m_MetricSignature] := If[OddQ[CountOnes[Metric[m]]], -1, 1]
 MetricSignature /: Abs[m_MetricSignature] := Sqrt[Abs[Det[m]]]
 Submanifold /: Abs[m_Submanifold] := If[BasisQ[m], Sqrt[Reverse[m] m], Sqrt[Abs[Det[m]]]]
+
+DiagonalQ[_MetricSignature] := True
+DiagonalQ[_MetricTensor] := False
 
 Bits[Submanifold[_, _, bits_, ___]] := bits
 Rank[m_Integer] := m
@@ -55,7 +59,7 @@ PolyQ[_Integer] := True
 PolyQ[_List] := True
 Map[(#[_Integer] := 0) &, {OptionsQ, DyadQ, DiffMode, DiffVars, Metric}]
 Map[(#[_List] := 0) &, {OptionsQ, DyadQ, DiffMode, DiffVars, Metric}]
-Map[(#[t_] := #[Manifold[t]]) &, {OptionsQ, PolyQ, DyadQ, DiffMode, DiffVars}]
+Map[(#[t_] := #[Manifold[t]]) &, {OptionsQ, PolyQ, DyadQ, DiffMode, DiffVars,DiagonalQ}]
 PolyQ[MetricSignature[_, bits_, ___]] := PolyQCalc[bits]
 DyadQ[MetricSignature[_, bits_, ___]] := DyadQCalc[bits]
 DiffMode[MetricSignature[_, _, _, _, d_]] := d

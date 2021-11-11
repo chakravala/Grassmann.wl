@@ -94,28 +94,41 @@ GOne[V_] := Submanifold[V, 0]
 
 (* Chain *)
 
-Chain /: SparseArray[Chain[_,_,a_SparseArray]] := a
+NormalMerge[r_] := Normal@Merge[r,Total]
 
-Chain /: MakeBoxes[Chain[m_Submanifold,g_Integer,a_SparseArray],StandardForm] := Module[{n = Dims[m], t, indices, basis},
-  t = SparseArray[a];
+Chain /: Coefficient[Chain[_, _,a_]] := a
+Chain /: SparseArray[Chain[_,_,a_]] := SparseArray[a]
+
+ChainToMulti[Chain[v_,g_,a_List]] := Map[Rule@@# &, Transpose@{IndexBasis[Dims[v], g],a}]
+ChainToMulti[Chain[v_,g_,a_SparseArray]] := Map[Rule@@# &, Transpose@{IndexBasis[Dims@v, g][[a["ColumnIndices"]]],a["NonzeroValues"]}]
+
+Chain[v_,g_,r__Rule] := Chain[v,g,{r}]
+Chain[v_,g_,r:List[__Rule]] := Module[{n=Dims[v]},Chain[v,g,Normal@SparseArray[Map[Rule[BladeIndex[n,#[[1]]-1],#[[2]]] &,r],Binomial[n,g]]]]
+
+Chain /: MakeBoxes[Chain[m_Submanifold,g_Integer,a_],StandardForm] := Module[{n = Dims[m], t, indices, basis},
+  t = SparseArray@a;
   indices = Flatten[t["ColumnIndices"]];
   basis = IndexBasis[n,g][[indices]];
-  RowBox[Riffle[Map[RowBox[{Parenthesis[t[[indices[[#]]]]], PrintIndices[m, basis[[#]]]}] &, Range[Length[indices]]], "+"]]]
+  RowBox[Riffle[Map[RowBox@{Parenthesis@t[[indices[[#]]]], PrintIndices[m, basis[[#]]]} &, Range@Length@indices], "+"]]]
 
 (* Multivector *)
 
+RuleShift[Rule[b_,x_]] := Rule[b+1,x]
+
 Multivector /: Coefficient[Multivector[_,a_]] := a
-Multivector /: SparseArray[Multivector[_,a_]] := SparseArray[Coefficient[a]]
+Multivector /: SparseArray[m_Multivector] := SparseArray@Coefficient@m
 
 Multivector[m_Multivector] := m
 Multivector[Multivector[v_,a_SparseArray]] := Multivector[v,SparseArray[a]]
-Multivector[v_,r__Rule] := Multivector[v,SparseArray[{r},BitShiftLeft[1,Dims[v]]]]
+Multivector[v_,r:List[__Rule]] := Multivector[v,SparseArray[r,BitShiftLeft[1,Dims[v]]]]
+Multivector[v_,r__Rule] := Multivector[v,{r}]
+Multivector[Submanifold[v_,_,b_,x_]] := Multivector[v,b+1->x]
+Multivector[m:Chain[v_,_,_]] := Multivector[v,RuleShift/@ChainToMulti[m]]
 
-Multivector /: MakeBoxes[Multivector[m_Submanifold,a_SparseArray],StandardForm] := Module[{t = SparseArray[a]},
-  RowBox[Riffle[Map[RowBox[{Parenthesis[t[[#]]], PrintIndices[m, #-1]}] &,
-    System`Convert`NotebookMLDump`UnorderedIntersection[IndexBasis[m]+1,Flatten[t["ColumnIndices"]]]], "+"]]]
+Multivector /: MakeBoxes[Multivector[m_Submanifold,a_],StandardForm] := Module[{t = SparseArray@a},
+  RowBox[Riffle[Map[RowBox[{Parenthesis@t[[#]], PrintIndices[m, #-1]}] &,
+    System`Convert`NotebookMLDump`UnorderedIntersection[IndexBasis[m]+1,Flatten@t["ColumnIndices"]]], "+"]]]
 
 Get["Grassmann`algebra`"]
-
 
 EndPackage[]
