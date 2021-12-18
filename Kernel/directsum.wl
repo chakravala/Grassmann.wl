@@ -21,30 +21,29 @@ MetricSignature[s_String] := MetricSignature[StringLength[s],doc2m[Boole[StringC
 MetricSignature[n_,m_,s_,f_,d_,v_String] := MetricSignature[n,m,s,f,d,{v,pre[[2]],pre[[3]],pre[[4]]}]
 
 DiagonalForm[form_List,option_:0] := MetricSignature[Length[form],option,form]
+ToSubmanifold[signature_String] := Submanifold[MetricSignature[signature]]
 
-Submanifold[signature_String] := Submanifold[MetricSignature[signature]]
 Submanifold[manifold_] := Submanifold[manifold, Rank[manifold]]
 Submanifold[manifold_Symbol] := Submanifold[manifold, manifold]
-Submanifold[manifold_,grade_Symbol] := Submanifold[manifold, grade, PseudoList[n]]
-Submanifold[manifold_,grade_Integer] := Submanifold[manifold, grade, BitShiftLeft[1, grade] - 1]
-Submanifold[manifold_, indices_List, c_:1] := If[Length[Union[indices]]!=Length[indices],
+Submanifold[manifold_, grade_, basis_] := Submanifold[manifold, grade, basis, 1]
+Submanifold[manifold_, grade_Symbol] := Submanifold[manifold, grade, PseudoList[n]]
+Submanifold[manifold_, grade_Integer] := Submanifold[manifold, grade, BitShiftLeft[1, grade] - 1]
+
+Submanifold /: Subscript[manifold_Submanifold, indices___] := manifold[indices]
+Submanifold[manifold_, _, _, coef_][indices___] := ToSubmanifold[manifold, {indices}, coef]
+ToSubmanifold[manifold_, indices_List, c_:1] := If[Length[Union[indices]]!=Length[indices],
   GZero[manifold],
   Submanifold[manifold, Length[indices], IndexToInteger[DimsList[manifold], indices],
     If[IndexParity[Flatten[Map[Position[DimsList[manifold],#]&,indices]]][[1]],-c,c]]]
-Submanifold[manifold_, 0] := Submanifold[manifold, 0 , 0]
-Submanifold /: Part[Submanifold[_Integer, __], _Integer] := 1
-Submanifold /: Part[Submanifold[_List, __], _Integer] := 1
-Submanifold /: Part[Submanifold[_Integer, __], l_List] := ConstantArray[1,Length[l]]
-Submanifold /: Part[Submanifold[_List, __],  _List] := ConstantArray[1,Length[l]]
-Submanifold /: Part[Submanifold[MetricSignature[_, _, bits_, ___], _, basis_, ___], index_] := BitSign[BitAtIndex[bits, Indices[basis][[index]]]]
-Submanifold /: Part[Submanifold[MetricSignature[_], _, basis_, ___], index_] := BitSign[BitAtIndex[0, Indices[basis][[index]]]]
-Submanifold /: Part[Submanifold[MetricSignature[_,_], _, basis_, ___], index_] := BitSign[BitAtIndex[0, Indices[basis][[index]]]]
-Submanifold /: Part[Submanifold[Submanifold[_, _, bits_, ___], _, _], index_] := BitSign[BitAtIndex[bits, index]]
-Submanifold /: Subscript[manifold_Submanifold, indices___] := manifold[indices]
-Submanifold[manifold_, _, _][indices___] := Submanifold[manifold, {indices}]
-Submanifold[manifold_, _, _, coef_][indices___] := Submanifold[manifold, {indices}, coef]
-Submanifold /: Times[t:Submanifold[manifold_, grade_, bits_], coef_] := Submanifold[manifold, grade, bits, coef]
-Submanifold /: Times[t:Submanifold[manifold_, grade_, bits_, coef_], times_] := Submanifold[manifold, grade, bits, Times[coef,times]]
+
+Submanifold /: Part[manifold_Submanifold, index_] := GetPart[manifold,index]
+GetPart[Submanifold[_Integer|_List, __], _Integer] := 1
+GetPart[Submanifold[_Integer|_List, __], l_List] := ConstantArray[1,Length[l]]
+GetPart[Submanifold[MetricSignature[_], _, basis_, ___], index_] := BitSign[BitAtIndex[0, Indices[basis][[index]]]]
+GetPart[Submanifold[MetricSignature[_,_], _, basis_, ___], index_] := BitSign[BitAtIndex[0, Indices[basis][[index]]]]
+GetPart[Submanifold[MetricSignature[_, _, bits_, ___], _, basis_, ___], index_] := BitSign[BitAtIndex[bits, Indices[basis][[index]]]]
+GetPart[Submanifold[Submanifold[_, _, bits_, ___], _, _], index_] := BitSign[BitAtIndex[bits, index]]
+
 Submanifold /: Coefficient[Submanifold[_, _, _, coef_]] := coef
 Submanifold /: Coefficient[Submanifold[_, _, _]] := 1
 CoefficientQ[Submanifold[_, _, _, coef_]] := !OneQ[coef]

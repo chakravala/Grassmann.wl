@@ -153,6 +153,9 @@ Protect[\[FivePointedStar]]
 Submanifold /: HodgeDual[s_Submanifold] := ComplementRightHodge[s]
 Multivector /: HodgeDual[s_Multivector] := ComplementRightHodge[s]
 Chain /: HodgeDual[s_Chain] := ComplementRightHodge[s]
+Submanifold /: Not[s_Submanifold] := ComplementRight[s]
+Multivector /: Not[s_Multivector] := ComplementRight[s]
+Chain /: Not[s_Chain] := ComplementRight[s]
 
 Map[Module[{c,p,h,ph,pn},
   {s,pp} = {SymbolJoin["Complement",#],SymbolJoin["Parity",#]};
@@ -164,9 +167,9 @@ Map[Module[{c,p,h,ph,pn},
       If[DyadicQ@V,Throw[domain],
         v = Conjugate[x]*If[e,pn[V,B,1],1];
         GetBasis[V,BitComplement[Dims@V,B,DiffVars@V,z],p[b]*v]]]];
-    c[b:Chain[v_,g_,a_]] := Module[{d,q},
+    c[b:Chain[v_,g_,a_]] := If[TangentSpaceQ[v],c[ToMultivector[b]],Module[{d,q},
       {d,q} = {DiffVars@v,If[ch,0,Boole@InfinityQ@v+Boole@OriginQ@v]};
-      Chain[v,Dims[v]-g,Map[Rule[BitComplement[Dims@v,#[[1]],d,q]+1,Conjugate[p[v,#[[1]]]*If[ch,pn[v,#[[1]],#[[2]]],#[[2]]]]] &,ChainToMulti@b]]];
+      Chain[v,Dims[v]-g,Map[Rule[BitComplement[Dims@v,#[[1]],d,q]+1,Conjugate[p[v,#[[1]]]*If[ch,pn[v,#[[1]],#[[2]]],#[[2]]]]] &,ChainToMulti@b]]]];
     c[Multivector[v_,a_SparseArray]] := Module[{ib,val,d,q},
       {ib,val} = {a["AdjacencyLists"],a["NonzeroValues"]};
       {d,q} = {DiffVars@v,If[ch,0,Boole@InfinityQ@v+Boole@OriginQ@v]};
@@ -193,8 +196,19 @@ Map[Module[{p = Symbol[StringJoin["Parity",ToString[#]]]},
 
 (* algebra *)
 
-Submanifold[m_, g_, b_] := Submanifold[m, g, b, 1]
-Submanifold[x_,s:Submanifold[v_,g_,b_,y_]] := Submanifold[v,g,b,Times[x,y]]
+Submanifold /: Times[Submanifold[manifold_, grade_, bits_, coef_], times_] := Submanifold[manifold, grade, bits, Times[coef,times]]
+Multivector /: Times[Multivector[manifold_, coef_], times_] := Multivector[manifold, Times[coef,times]]
+Chain /: Times[Chain[manifold_, grade_, coef_], times_] := Chain[manifold, grade, Times[coef,times]]
+
+Submanifold /: Plus[t:Submanifold[v_,___], plus_] := t+Submanifold[v,0,0,plus]
+Multivector /: Plus[t:Multivector[v_,_], plus_] := t+Submanifold[v,0,0,plus]
+Chain /: Plus[Chain[v_,_,_], plus_] := t+Submanifold[v,0,0,plus]
+
+Submanifold /: Divide[a_, b_Submanifold] := a**Inverse[b]
+Multivector /: Divide[a_, b_Multivector] := a**Inverse[b]
+Chain /: Divide[a_, b_Chain] := a**Inverse[b]
+
+(*Submanifold[x_,s:Submanifold[v_,g_,b_,y_]] := Submanifold[v,g,b,Times[x,y]]*)
 
 Submanifold /: Plus[Submanifold[m_, g_, a_, x_],Submanifold[m_, g_, b_, y_]] :=
   Chain[m,g,{a+1->x,b+1->y}]
@@ -217,9 +231,9 @@ Map[Module[{},
   Chain /: #[Chain[m_, g_, x_], Chain[m_, g_, y_]] := Chain[m, g, #[x,y]];
   Multivector /: #[Multivector[m_, x_], Multivector[m_, y_]] := Multivector[m, #[x,y]];
   Submanifold /: #[Submanifold[m_, g_, b_, x_],Submanifold[m_, g_, b_, y_]] := Submanifold[m,g,b,#[x,y]];
-  Multivector /: #[a_Submanifold,b_Multivector] := #[Multivector[a],b];
-  Multivector /: #[a_Chain,b_Multivector] := #[Multivector[a],b];
-  Chain /: #[a_Submanifold,b_Chain] := #[Multivector[a],b]] &,
+  Multivector /: #[a_Submanifold,b_Multivector] := #[ToMultivector[a],b];
+  Multivector /: #[a_Chain,b_Multivector] := #[ToMultivector[a],b];
+  Chain /: #[a_Submanifold,b_Chain] := #[ToMultivector[a],b]] &,
 {Plus,Minus}]
 
 Submanifold /: Total[t:Submanifold[m_, g_, b_, _]..] := Submanifold[m,g,b,Total[Coefficient/@t]]

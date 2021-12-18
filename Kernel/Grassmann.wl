@@ -59,12 +59,40 @@ ZeroQ[x_?NumberQ] := x == 1
 ZeroQ[False] := True
 ZeroQ[True] := False
 
+ZeroQ[Submanifold[_,_,_,x_]] := ZeroQ[x]
+ZeroQ[t_Multivector|t_Chain] := ZeroQ[Norm[t]]
+OneQ[t_Submanifold|t_Multivector|t_Chain] := Norm[t] == Coefficient[Scalar[t]] == 1
+
 Parenthesis[x_Symbol] := ToBoxes[x,StandardForm]
 Parenthesis[x_Times] := ToBoxes[x,StandardForm]
 Parenthesis[x_?NumberQ] := ToBoxes[x,StandardForm]
 Parenthesis[x_Submanifold] := ToBoxes[x,StandardForm]
 Parenthesis[x_Multivector] := Sequence["(",ToBoxes[x,StandardForm],")"]
 Parenthesis[x_] := Sequence["(",ToBoxes[x,StandardForm],")"]
+
+Abs2[t_Multivector] := Module[{a=t.t},If[ScalarQ[a],Scalar[a],a]]
+Abs2[t_Submanifold|t_Chain] := t.t
+Submanifold /: Abs[t_Submanifold] := Sqrt[Abs2[t]]
+Multivector /: Abs[t_Multivector] := Sqrt[Abs2[t]]
+Chain /: Abs[t_Chain] := Sqrt[Abs2[t]]
+Submanifold /: Norm[t_Submanifold] := Norm[Coefficient[t]]
+Multivector /: Norm[t_Multivector] := Norm[Coefficient[t]]
+Chain /: Norm[t_Chain] := Norm[Coefficient[t]]
+
+ScalarQ[Submanifold[_,0,___]] := True
+ScalarQ[_Submanifold] := False
+ScalarQ[Chain[_,0,_]] := True
+ScalarQ[_Chain] := False
+ScalarQ[Multivector[_,coef_]] := ZeroQ[Norm[coef[[2;;-1]]]]
+
+Scalar[t:Submanifold[_,0,___]] := t
+Scalar[t:Chain[manifold_,0,coef_]] := Submanifold[manifold,0,0,coef[[1]]]
+Scalar[Chain[manifold_,_,_]] := GZero[manifold]
+Scalar[Submanifold[manifold_,___]] := GZero[manifold]
+Scalar[Multivector[manifold_,coef_]] := Submanifold[manifold,0,0,coef[[1]]]
+
+Submanifold /: Sqrt[Submanifold[v_,0_,b_,x_]] := Submanifold[v,0,b,Sqrt[x]]
+Chain /: Sqrt[Chain[v_,0_,x_]] := Submanifold[v,0,b,Sqrt[x[[1]]]]
 
 Get["Grassmann`indices`"]
 Get["Grassmann`directsum`"]
@@ -105,6 +133,9 @@ ChainToMulti[Chain[v_,g_,a_SparseArray]] := Map[Rule@@# &, Transpose@{IndexBasis
 Chain[v_,g_,r__Rule] := Chain[v,g,{r}]
 Chain[v_,g_,r:List[__Rule]] := Module[{n=Dims[v]},Chain[v,g,Normal@SparseArray[Map[Rule[BladeIndex[n,#[[1]]-1],#[[2]]] &,r],Binomial[n,g]]]]
 
+ToChain[Submanifold[v_,g_,b_,x_]] := Chain[v,g,{b+1->x}]
+ToChain[m_Chain] := m
+
 Chain /: MakeBoxes[Chain[m_Submanifold,g_Integer,a_],StandardForm] := Module[{n = Dims[m], t, indices, basis},
   t = SparseArray@a;
   indices = Flatten[t["ColumnIndices"]];
@@ -118,12 +149,13 @@ RuleShift[Rule[b_,x_]] := Rule[b+1,x]
 Multivector /: Coefficient[Multivector[_,a_]] := a
 Multivector /: SparseArray[m_Multivector] := SparseArray@Coefficient@m
 
-Multivector[m_Multivector] := m
-Multivector[Multivector[v_,a_SparseArray]] := Multivector[v,SparseArray[a]]
+ToMultivector[m_Multivector] := m
+ToMultivector[Submanifold[v_,_,b_,x_]] := Multivector[v,b+1->x]
+ToMultivector[m:Chain[v_,_,_]] := Multivector[v,RuleShift/@ChainToMulti[m]]
+ToMultivector[Multivector[v_,a_SparseArray]] := Multivector[v,SparseArray[a]]
+
 Multivector[v_,r:List[__Rule]] := Multivector[v,SparseArray[r,BitShiftLeft[1,Dims[v]]]]
 Multivector[v_,r__Rule] := Multivector[v,{r}]
-Multivector[Submanifold[v_,_,b_,x_]] := Multivector[v,b+1->x]
-Multivector[m:Chain[v_,_,_]] := Multivector[v,RuleShift/@ChainToMulti[m]]
 
 Multivector /: MakeBoxes[Multivector[m_Submanifold,a_],StandardForm] := Module[{t = SparseArray@a},
   RowBox[Riffle[Map[RowBox[{Parenthesis@t[[#]], PrintIndices[m, #-1]}] &,
